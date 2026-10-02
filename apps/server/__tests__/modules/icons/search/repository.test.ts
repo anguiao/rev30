@@ -24,6 +24,9 @@ const fixtures = [
     fullTokens: ['alarm', 'clock', 'off'],
     primaryEnglishTerms: ['alarm', 'clock', 'off'],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
   {
     id: 'tabler:camera',
@@ -38,6 +41,9 @@ const fixtures = [
     fullTokens: ['camera'],
     primaryEnglishTerms: ['camera'],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
   {
     id: 'lucide:camera',
@@ -52,6 +58,9 @@ const fixtures = [
     fullTokens: ['camera', 'photo'],
     primaryEnglishTerms: ['camera'],
     auxiliaryEnglishTerms: ['photo'],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
   {
     id: 'lucide:camera-box',
@@ -66,6 +75,9 @@ const fixtures = [
     fullTokens: ['box', 'camera'],
     primaryEnglishTerms: ['box', 'camera'],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
   {
     id: 'lucide:cameraman',
@@ -80,6 +92,9 @@ const fixtures = [
     fullTokens: ['cameraman'],
     primaryEnglishTerms: ['cameraman'],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
   {
     id: 'lucide:rotate-3d',
@@ -94,6 +109,9 @@ const fixtures = [
     fullTokens: ['3d', 'rotate'],
     primaryEnglishTerms: ['rotate'],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
   {
     id: 'acme:hidden-eye',
@@ -108,6 +126,9 @@ const fixtures = [
     fullTokens: ['eye', 'hidden', '不可见', '眼睛'],
     primaryEnglishTerms: ['eye', 'hidden'],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   },
 ]
 

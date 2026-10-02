@@ -24,6 +24,7 @@ describe('icon search migration', () => {
         expect.arrayContaining([
           'icon_search_documents_exact_phrases_gin',
           'icon_search_documents_full_tokens_gin',
+          'icon_search_documents_full_expressions_gin',
           'icon_search_documents_search_vector_gin',
           'icon_search_documents_source_prefix_id_idx',
         ]),
@@ -48,6 +49,12 @@ describe('icon search migration', () => {
         columnName: 'primary_tokens',
         columnDefault: "'{}'::text[]",
       })
+      for (const columnName of ['full_expressions', 'primary_expressions', 'exact_expressions']) {
+        expect(comparableColumns('icon_search_documents')).toContainEqual({
+          columnName,
+          columnDefault: "'{}'::text[]",
+        })
+      }
       expect(comparableColumns('icon_search_documents_staging')).toEqual(
         comparableColumns('icon_search_documents'),
       )

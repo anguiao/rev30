@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { deriveSearchText } from './text'
+import { expressionKeys, fullHanExpressionPattern } from './expressions'
+import { normalizeSearchText } from '@rev30/utils'
 
 const iconSearchMetadataSchema = z
   .object({
@@ -21,6 +23,9 @@ export const iconSearchDocumentSchema = iconSearchMetadataSchema.extend({
   primaryTokens: z.array(z.string()),
   primaryEnglishTerms: z.array(z.string()),
   auxiliaryEnglishTerms: z.array(z.string()),
+  fullExpressions: z.array(z.string()),
+  primaryExpressions: z.array(z.string()),
+  exactExpressions: z.array(z.string()),
 })
 
 export type IconSearchDocument = z.infer<typeof iconSearchDocumentSchema>
@@ -29,6 +34,9 @@ type IconSearchDocumentInput = IconSearchMetadata & {
   primaryPhrases: string[]
   auxiliaryPhrases: string[]
   exactPhrases: string[]
+  primaryExpressions?: readonly string[]
+  auxiliaryExpressions?: readonly string[]
+  exactExpressions?: readonly string[]
 }
 
 export type CustomIconSearchInput = Pick<
@@ -52,6 +60,12 @@ export function deriveIconSearchDocument(input: IconSearchDocumentInput): IconSe
     collection: input.collection,
     palette: input.palette,
     customIconId: input.customIconId,
+    fullExpressions: expressionKeys([
+      ...(input.primaryExpressions ?? []),
+      ...(input.auxiliaryExpressions ?? []),
+    ]),
+    primaryExpressions: expressionKeys(input.primaryExpressions ?? []),
+    exactExpressions: expressionKeys(input.exactExpressions ?? []),
     exactPhrases: [
       ...new Set(
         input.exactPhrases
@@ -77,5 +91,11 @@ export function deriveCustomIconSearchDocument(input: CustomIconSearchInput): Ic
     primaryPhrases: [input.name, ...input.keywords],
     auxiliaryPhrases: [input.prefix, input.collection],
     exactPhrases: [input.name, ...input.keywords],
+    primaryExpressions: input.keywords.filter((keyword) =>
+      fullHanExpressionPattern.test(normalizeSearchText(keyword)),
+    ),
+    exactExpressions: input.keywords.filter((keyword) =>
+      fullHanExpressionPattern.test(normalizeSearchText(keyword)),
+    ),
   })
 }

@@ -8,7 +8,7 @@ const deprioritizedIconPrefixes = new Set(['logos', 'simple-icons', 'emojione', 
 export const ICON_SEARCH_RULES_VERSION = createHash('sha256')
   .update(
     JSON.stringify({
-      version: 7,
+      version: 8,
       preferredPrefixes: preferredIconPrefixes,
       deprioritizedPrefixes: [...deprioritizedIconPrefixes].sort(),
     }),

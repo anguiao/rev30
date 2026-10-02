@@ -861,6 +861,18 @@ function iconSearchDocumentColumns() {
     customIconId: uuid('custom_icon_id'),
     exactPhrases: text('exact_phrases').array().notNull(),
     fullTokens: text('full_tokens').array().notNull(),
+    fullExpressions: text('full_expressions')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    primaryExpressions: text('primary_expressions')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    exactExpressions: text('exact_expressions')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     primaryTokens: text('primary_tokens')
       .array()
       .notNull()
@@ -874,6 +886,7 @@ export const iconSearchDocuments = pgTable(
   iconSearchDocumentColumns(),
   (table) => [
     index('icon_search_documents_full_tokens_gin').using('gin', table.fullTokens),
+    index('icon_search_documents_full_expressions_gin').using('gin', table.fullExpressions),
     index('icon_search_documents_exact_phrases_gin').using('gin', table.exactPhrases),
     index('icon_search_documents_search_vector_gin').using('gin', table.searchVector),
     index('icon_search_documents_source_prefix_id_idx').on(table.source, table.prefix, table.id),
@@ -893,6 +906,7 @@ export const iconSearchDocumentsStaging = pgTable(
   iconSearchDocumentColumns(),
   (table) => [
     index('icon_search_documents_staging_full_tokens_gin').using('gin', table.fullTokens),
+    index('icon_search_documents_staging_full_expressions_gin').using('gin', table.fullExpressions),
     index('icon_search_documents_staging_exact_phrases_gin').using('gin', table.exactPhrases),
     index('icon_search_documents_staging_search_vector_gin').using('gin', table.searchVector),
     index('icon_search_documents_staging_source_prefix_id_idx').on(

@@ -22,6 +22,9 @@ async function stageDocumentBatch(executor: DbExecutor, documents: IconSearchDoc
       preference: getIconPreference(document),
       custom_icon_id: document.customIconId,
       exact_phrases: document.exactPhrases,
+      full_expressions: document.fullExpressions,
+      primary_expressions: document.primaryExpressions,
+      exact_expressions: document.exactExpressions,
       full_tokens: document.fullTokens,
       primary_tokens: document.primaryTokens,
       primary_english_terms: document.primaryEnglishTerms.join(' '),
@@ -31,11 +34,12 @@ async function stageDocumentBatch(executor: DbExecutor, documents: IconSearchDoc
   await executor.execute(sql`
     INSERT INTO ${sql.identifier(importTable)} (
       id, prefix, name, source, collection, palette, preference, custom_icon_id,
-      exact_phrases, full_tokens, primary_tokens, search_vector
+      exact_phrases, full_tokens, primary_tokens, full_expressions, primary_expressions, exact_expressions, search_vector
     )
     SELECT document.id, document.prefix, document.name, document.source,
       document.collection, document.palette, document.preference, document.custom_icon_id,
       document.exact_phrases, document.full_tokens, document.primary_tokens,
+      document.full_expressions, document.primary_expressions, document.exact_expressions,
       setweight(to_tsvector('simple', document.primary_english_terms), 'A') ||
         setweight(to_tsvector('simple', document.auxiliary_english_terms), 'B')
     FROM jsonb_to_recordset(${payload}::jsonb) AS document(
@@ -50,6 +54,9 @@ async function stageDocumentBatch(executor: DbExecutor, documents: IconSearchDoc
       exact_phrases text[],
       full_tokens text[],
       primary_tokens text[],
+      full_expressions text[],
+      primary_expressions text[],
+      exact_expressions text[],
       primary_english_terms text,
       auxiliary_english_terms text
     )
@@ -94,10 +101,10 @@ async function stageCustomDocuments(executor: DbExecutor, rebuildCustom: boolean
     await executor.execute(sql`
       INSERT INTO ${sql.identifier(importTable)} (
         id, prefix, name, source, collection, palette, preference, custom_icon_id,
-        exact_phrases, full_tokens, primary_tokens, search_vector
+        exact_phrases, full_tokens, primary_tokens, full_expressions, primary_expressions, exact_expressions, search_vector
       )
       SELECT id, prefix, name, source, collection, palette, preference, custom_icon_id,
-        exact_phrases, full_tokens, primary_tokens, search_vector
+        exact_phrases, full_tokens, primary_tokens, full_expressions, primary_expressions, exact_expressions, search_vector
       FROM icon_search_documents WHERE source = 'custom'
     `)
   }
@@ -147,6 +154,7 @@ async function swapDocumentTables(executor: DbExecutor) {
 
   const indexes = [
     'full_tokens_gin',
+    'full_expressions_gin',
     'exact_phrases_gin',
     'search_vector_gin',
     'source_prefix_id_idx',
@@ -165,6 +173,21 @@ async function swapDocumentTables(executor: DbExecutor) {
   }
 }
 
+async function cleanPendingIndexes(executor: DbExecutor) {
+  // Complete bulk GIN work before exposing the table; otherwise each search
+  // scans the same pending list, especially once per possible expression key.
+  for (const name of [
+    'full_tokens_gin',
+    'exact_phrases_gin',
+    'search_vector_gin',
+    'full_expressions_gin',
+  ]) {
+    await executor.execute(
+      sql`SELECT gin_clean_pending_list(${`${importTable}_${name}`}::regclass)`,
+    )
+  }
+}
+
 export async function replaceBuiltinIconSearchDocuments(
   database: Db,
   documents: AsyncIterable<IconSearchDocument> | Iterable<IconSearchDocument>,
@@ -177,9 +200,12 @@ export async function replaceBuiltinIconSearchDocuments(
   await clearStagingDocuments(database)
   try {
     await stageBuiltinDocuments(database, documents)
+    await cleanPendingIndexes(database)
     await database.transaction(async (tx) => {
       await lockIconSearchWrites(tx)
       await stageCustomDocuments(tx, options.rebuildCustom)
+      await cleanPendingIndexes(tx)
+      await tx.execute(sql`ANALYZE ${sql.identifier(importTable)}`)
       const countResult = await tx.execute<{ total: number }>(
         sql`SELECT count(*)::integer AS total FROM ${sql.identifier(importTable)}`,
       )

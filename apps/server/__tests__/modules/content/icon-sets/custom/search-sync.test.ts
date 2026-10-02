@@ -159,6 +159,9 @@ describe('custom icon search synchronization', () => {
             fullTokens: ['logo'],
             primaryEnglishTerms: ['logo'],
             auxiliaryEnglishTerms: [],
+            fullExpressions: [],
+            primaryExpressions: [],
+            exactExpressions: [],
           },
         ],
         {

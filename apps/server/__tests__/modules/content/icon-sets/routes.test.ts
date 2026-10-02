@@ -300,6 +300,9 @@ describe('icon set routes', () => {
           fullTokens: ['sun'],
           primaryEnglishTerms: ['sun'],
           auxiliaryEnglishTerms: [],
+          fullExpressions: [],
+          primaryExpressions: [],
+          exactExpressions: [],
         },
       ],
       {

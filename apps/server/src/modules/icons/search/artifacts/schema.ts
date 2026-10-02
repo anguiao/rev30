@@ -13,7 +13,7 @@ const artifactFileSchema = z
 
 export const runtimeManifestSchema = z
   .object({
-    formatVersion: z.literal(4),
+    formatVersion: z.literal(5),
     iconPackageVersion: z.string().min(1),
     searchDataVersion: z.string().min(1),
     rulesVersion: z.string().min(1),

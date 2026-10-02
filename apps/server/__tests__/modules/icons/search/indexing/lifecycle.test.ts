@@ -47,6 +47,9 @@ const document = {
   fullTokens: ['camera'],
   primaryEnglishTerms: ['camera'],
   auxiliaryEnglishTerms: [],
+  fullExpressions: [],
+  primaryExpressions: [],
+  exactExpressions: [],
 }
 const state = {
   indexVersion: 'same',
@@ -93,7 +96,7 @@ describe('icon search lifecycle', () => {
   dbTest('rejects artifacts built for a different installed icon package', async ({ db }) => {
     const logger = { error: vi.fn() }
     vi.spyOn(artifacts, 'readIconSearchManifest').mockResolvedValueOnce({
-      formatVersion: 4,
+      formatVersion: 5,
       contentFingerprint: '0'.repeat(64),
       iconPackageVersion: 'icons-v1',
       searchDataVersion: 'data-v1',
@@ -459,6 +462,7 @@ describe('icon search lifecycle', () => {
       expect(indexRows.map((row) => row.indexname)).toEqual([
         'icon_search_documents_custom_icon_id_unique',
         'icon_search_documents_exact_phrases_gin',
+        'icon_search_documents_full_expressions_gin',
         'icon_search_documents_full_tokens_gin',
         'icon_search_documents_pkey',
         'icon_search_documents_search_vector_gin',
@@ -571,7 +575,7 @@ describe('icon search lifecycle', () => {
     `)
     const logger = { error: vi.fn() }
     const manifest = {
-      formatVersion: 4 as const,
+      formatVersion: 5 as const,
       contentFingerprint: '0'.repeat(64),
       iconPackageVersion: ICON_PACKAGE_VERSION,
       searchDataVersion: 'data-v2',

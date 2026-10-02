@@ -19,6 +19,7 @@ import { searchIconDocuments } from '../../../src/modules/icons/search/repositor
 import { createIconSearchService } from '../../../src/modules/icons/search/service'
 import { listBuiltinIcons } from '../../../src/modules/content/icon-sets/builtin/service'
 import { directorySize, percentile95 } from '../benchmark/measure'
+import { measureExpressionStress } from './stress'
 import {
   qualityPerformanceCases,
   qualityQueries,
@@ -281,6 +282,10 @@ for (const scope of ['controlled', 'full'] as const) {
       memory: process.memoryUsage(),
       diskBytes: await directorySize(dataDirectory),
     })
+    await save(
+      'full-stress-performance.json',
+      await measureExpressionStress(database, requestedSamples),
+    )
   } finally {
     await client.close()
   }

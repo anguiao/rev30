@@ -31,6 +31,9 @@ function document(input: {
     fullTokens: [input.name],
     primaryEnglishTerms: [input.name],
     auxiliaryEnglishTerms: [],
+    fullExpressions: [],
+    primaryExpressions: [],
+    exactExpressions: [],
   }
 }
 

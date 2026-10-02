@@ -41,6 +41,9 @@ describe('unified icon search service', () => {
           fullTokens: ['camera'],
           primaryEnglishTerms: ['camera'],
           auxiliaryEnglishTerms: [],
+          fullExpressions: [],
+          primaryExpressions: [],
+          exactExpressions: [],
         },
       ],
       {

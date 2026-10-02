@@ -6,6 +6,7 @@ import { IconSearchPreparingError } from '../errors'
 import type { IconSearchMetadata } from './document'
 import { getCommittedIconSearchState } from './indexing/state'
 import { deriveSearchText } from './text'
+import { findExpressionSearchRows } from './expression-repository'
 
 type SearchRow = Omit<IconSearchMetadata, 'source'> & SearchCursorPosition
 
@@ -48,6 +49,16 @@ async function findSearchRows(
     options.source ? sql`source = ${options.source}` : undefined,
     options.prefix ? sql`prefix = ${options.prefix}` : undefined,
   ].filter((entry): entry is ReturnType<typeof sql> => entry !== undefined)
+  if (!completeIconIdSchema.safeParse(phrase).success) {
+    const expressionRows = await findExpressionSearchRows(
+      executor,
+      options.keyword,
+      filters.length ? sql.join(filters, sql` AND `) : sql`true`,
+      options.limit,
+      cursor,
+    )
+    if (expressionRows) return expressionRows
+  }
   const conditions = completeIconIdSchema.safeParse(phrase).success
     ? [sql`id = ${phrase}`]
     : [

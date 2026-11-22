@@ -64,9 +64,18 @@ function unique<T>(values?: readonly T[]): T[] {
   return [...new Set(values)]
 }
 
-function mergeConcepts(left: IconSearchConcept, right: IconSearchConcept): IconSearchConcept {
+function mergeConcepts(
+  left: IconSearchConcept,
+  right: IconSearchConcept,
+  file: ConceptFile,
+): IconSearchConcept {
+  if (left.zh.length !== right.zh.length || !left.zh.every((key) => right.zh.includes(key))) {
+    throw new Error(
+      `Conflicting zh groups in ${file}.json: expected ${JSON.stringify(left.zh)}, received ${JSON.stringify(right.zh)}`,
+    )
+  }
   return {
-    zh: unique([...left.zh, ...right.zh]),
+    zh: left.zh,
     en: unique([...left.en, ...right.en]),
     intentEn: unique([...left.intentEn, ...right.intentEn]),
     exclude: unique([...left.exclude, ...right.exclude]),
@@ -112,21 +121,15 @@ export function compileIconSearchConcepts(
         }
       }
 
-      // Keys shared by the same groups share one expansion unit.
-      const mergedWithRecord = new Map<IconSearchConcept, IconSearchConcept>()
+      let previous: IconSearchConcept | undefined
       for (const key of concept.zh) {
         if (keysInFile.has(key)) throw new Error(`Duplicate key in ${file}.json: ${key}`)
         keysInFile.add(key)
         maxKeyLength = Math.max(maxKeyLength, key.length)
-        const previous = byKey.get(key)
-        if (!previous) {
-          byKey.set(key, concept)
-          continue
-        }
-        const merged = mergedWithRecord.get(previous) ?? mergeConcepts(previous, concept)
-        mergedWithRecord.set(previous, merged)
-        byKey.set(key, merged)
+        previous ??= byKey.get(key)
       }
+      const merged = previous ? mergeConcepts(previous, concept, file) : concept
+      for (const key of merged.zh) byKey.set(key, merged)
     }
     if (file === 'words') {
       for (const key of keysInFile) wordKeys.add(key)

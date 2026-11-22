@@ -25,7 +25,7 @@
   { "zh": ["访问受限", "禁止访问"], "en": ["no-access", "restricted"] },
   { "zh": ["安全验证", "安全校验"], "en": ["verified-user"] },
   { "zh": ["隐私设置", "隐私保护"], "en": ["privacy-tip"] },
-  { "zh": ["重置密码"], "en": ["password-reset"] },
+  { "zh": ["重置密码", "密码重置"], "en": ["password-reset"] },
   { "zh": ["密码隐藏", "隐藏密码"], "en": ["password-off"] },
   {
     "zh": ["两步验证", "双重认证", "双因素认证"],
@@ -273,7 +273,7 @@
   { "zh": ["锁定文件"], "en": ["file-lock", "file-lock-2", "document-lock"] },
   { "zh": ["受保护文件"], "en": ["file-shield", "file-lock"] },
   { "zh": ["文件解锁"], "en": ["file-lock-open"] },
-  { "zh": ["文件恢复"], "en": ["file-restore", "file-revert"] },
+  { "zh": ["文件恢复", "恢复文件"], "en": ["file-restore", "file-revert"] },
   {
     "zh": ["文件下载", "下载文件"],
     "en": ["file-download", "file-down", "file-arrow-down", "document-arrow-down"]
@@ -568,7 +568,6 @@
   { "zh": ["审核通过", "审批通过"], "en": ["approved"] },
   { "zh": ["审核失败", "审批拒绝"], "en": ["rejected"] },
   { "zh": ["等待中", "待处理"], "en": ["pending"] },
-  { "zh": ["处理中状态"], "en": ["in-progress", "processing"] },
   { "zh": ["已完成", "处理完成"], "en": ["completed", "done"] },
   { "zh": ["未完成", "尚未完成"], "en": ["incomplete"] },
   { "zh": ["已取消"], "en": ["cancelled", "canceled"] },

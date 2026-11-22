@@ -17,7 +17,7 @@ const sources = {
   phrases: [{ zh: ['打开文件夹'], en: ['folder-open'], parts: ['打开', '文 件夹'] }],
   intent: [
     {
-      zh: ['通 知', '提醒'],
+      zh: ['通知消息', '通 知'],
       en: ['notification', 'notifications'],
       intentEn: ['bell', 'bell'],
       exclude: ['door-bell'],
@@ -27,23 +27,30 @@ const sources = {
 }
 
 describe('icon search concept dictionary', () => {
-  it('normalizes keys and parts and merges matching file entries without linking unrelated groups', () => {
+  it('merges the same normalized synonym group across files regardless of alias order', () => {
     const { byKey } = compileIconSearchConcepts(sources)
 
     expect(byKey.get('k线图')?.zh).toEqual(['k线图', '股票图'])
     expect(byKey.get('打开文件夹')?.parts).toEqual(['打开', '文件夹'])
     expect(byKey.get('通知')).toEqual({
-      zh: ['通知', '通知消息', '提醒'],
+      zh: ['通知', '通知消息'],
       en: ['notification', 'notifications'],
       intentEn: ['bell'],
       exclude: ['door-bell'],
       demoteCategories: ['emoji', 'brand'],
       parts: [],
     })
-    expect(byKey.get('通知消息')?.zh).toEqual(['通知', '通知消息'])
-    expect(byKey.get('提醒')?.zh).toEqual(['通知', '提醒'])
-    expect(byKey.get('通知消息')?.intentEn).toEqual([])
+    expect(byKey.get('通知消息')).toBe(byKey.get('通知'))
   })
+
+  it.each([{ zh: ['通 知'] }, { zh: ['提醒', '通知消息', '通 知'] }, { zh: ['提醒', '通 知'] }])(
+    'rejects partially overlapping synonym groups across files ($zh)',
+    ({ zh }) => {
+      expect(() =>
+        compileIconSearchConcepts({ ...sources, intent: [{ zh, intentEn: ['bell'] }] }),
+      ).toThrow(/intent\.json.*通知.*通知消息/)
+    },
+  )
 
   it.each([
     [{ zh: [], en: ['notification'] }, 'zh'],

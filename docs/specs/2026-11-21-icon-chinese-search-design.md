@@ -152,7 +152,7 @@ apps/server/resources/icon-search/
 校验与合并规则：
 - 每条记录的 `en` 与 `intentEn` 至少有一项非空。
 - **同一文件内中文键必须唯一**，重复直接报错。
-- 若同一规范化中文键同时出现在 `words.json` / `phrases.json` 与 `intent.json` 中，加载器合并其 `en`、`intentEn`、`exclude` 和 `demoteCategories`，并对各数组去重。
+- 若不同文件的记录共用一个规范化中文键，两条记录的 `zh` 必须包含完全相同的规范化写法，顺序可以不同。部分重叠时报错并列出两组写法。组内所有写法共享合并去重后的 `en`、`intentEn`、`exclude`、`demoteCategories` 和短语声明的 `parts`。含义不同的词可以分别声明相同的用途目标。
 - **初版词典的编制**。从锁定图标包提取高频基础词和跨集合短语，结合用户在后台图标选择器或图标库中查找菜单图标、按钮图标或状态图标时使用的中文搜索词编制词条。英文词频用于发现候选词。分三类记录定稿条数、编制和审校耗时，以及辅助生成使用的 token 数。
 - 替换旧译表之前，以相同的图标集筛选复测旧版能命中的常用对象，如“服务器”和“蓝牙”。当 `log` 或 `can` 等多义词把切题图标挤到后面时，优先用含义明确的复合名称或所属图标集的官方中文改善排序。
 
@@ -267,7 +267,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 ### 校验与构建命令
 
 - `icon-search:validate`：
-  - 校验 `concepts/{phrases,words,intent}.json` 格式、必填字段、同文件中文键唯一性；
+  - 校验 `concepts/{phrases,words,intent}.json` 格式、必填字段、同文件中文键唯一性和跨文件同义词组一致性。
   - 按查询可匹配的字段，在当前锁定的图标包中验证 `en`、`intentEn` 和 `exclude` 的目标。只出现在集合名或 prefix 中的词不能验证为有效的概念目标。
   - 校验 `official/` 下各官方快照文件及 `manifest.json` 中的 SHA-256。
 - `icon-search:build`：
@@ -298,6 +298,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
    - 搜 `删除`：前 12 项同时出现 `delete` 系列与主力用途图标 `lucide:trash` / `lucide:trash-2`；
    - 搜 `首页`：前 12 项覆盖 `home` 与 `lucide:house`。
 3. **写法变体互通（约 8～12 条）**：`打开文件夹` / `打开 文件夹` / `打开的文件夹`（命中 `folder-open` 等）；`K线图` / `K 线图` / `股票图`；`四级标题` / `4级标题` / `标题4` / `标题级别4`（均命中 `heading-4`）；`AVI文件` / `AVI 文件`；`信用卡` / `贷记卡`。
+   - 在 `mdi` 集合中搜“文件恢复”或“恢复文件”，前 12 项均直接命中 `mdi:file-restore`。
 4. **官方中文直出（约 6～10 条）**：`俄罗斯方块`（命中 `icon-park*:block-seven`）、`笑哭` / `火箭`（命中 Emoji 集合）、`中国` / `日本`（命中国旗集合）。
 5. **歧义隔离与负例（约 8～12 条）**：
    - `日志` 命中 `lucide:logs` 且前排不出现 `log-out`；

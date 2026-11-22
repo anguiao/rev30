@@ -252,6 +252,14 @@ void describe('Spacing, numeric forms, and synonyms', () => {
       })
     }
   }
+
+  for (const keyword of ['文件恢复', '恢复文件']) {
+    void it(`${keyword} directly matches the MDI file restore icon`, async () => {
+      const { rows } = await search(keyword, { prefix: 'mdi' })
+      const direct = requireHit(rows, ['mdi:file-restore'])
+      assert.deepEqual([direct.tier, direct.matchScore], [0, 1])
+    })
+  }
 })
 
 void describe('Official Chinese metadata', () => {

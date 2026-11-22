@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto'
 import type { IconSearchMetadata } from './document'
 
-const preferredIconPrefixes = ['lucide', 'tabler', 'heroicons', 'ph', 'material-symbols']
+export const preferredIconPrefixes: readonly string[] = [
+  'lucide',
+  'tabler',
+  'heroicons',
+  'ph',
+  'material-symbols',
+]
 
 const deprioritizedIconPrefixes = new Set(['logos', 'simple-icons', 'emojione', 'noto'])
 

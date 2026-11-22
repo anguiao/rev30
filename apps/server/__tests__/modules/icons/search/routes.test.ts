@@ -1,41 +1,14 @@
 import { Hono } from 'hono'
 import type { IconSearchResponse } from '@rev30/contracts'
-import { describe, expect, vi } from 'vitest'
+import { beforeAll, describe, expect, vi } from 'vitest'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import { createIconRoutes } from '../../../../src/modules/icons/routes'
-import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
-
-const state = {
-  indexVersion: 'test',
-  iconPackageVersion: 'test',
-  searchDataVersion: 'test',
-  rulesVersion: '1',
-}
-function document(input: {
-  id: string
-  prefix: string
-  name: string
-  collection: string
-  customIconId?: string
-}) {
-  return {
-    ...input,
-    source: input.customIconId ? ('custom' as const) : ('builtin' as const),
-    palette: false,
-    customIconId: input.customIconId ?? null,
-    exactPhrases: [input.name],
-    primaryTokens: [input.name],
-    fullTokens: [input.name],
-    primaryEnglishTerms: [input.name],
-    auxiliaryEnglishTerms: [],
-    fullExpressions: [],
-    primaryExpressions: [],
-    exactExpressions: [],
-  }
-}
+import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../fixtures/icon-search'
+import { deriveCustomIconSearchFacts } from '../../../../src/modules/icons/search/facts'
+import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
 
 vi.mock('@iconify/json', () => ({
   lookupCollections: vi.fn(async () => ({
@@ -60,6 +33,8 @@ function createIconSearchTestApp(database: TestDatabase) {
 }
 
 describe('icon search routes', () => {
+  beforeAll(() => initializeRuntimeIconSearchConcepts())
+
   dbTest(
     'returns an explicit preparing status for authenticated non-empty searches',
     async ({ db }) => {
@@ -95,11 +70,9 @@ describe('icon search routes', () => {
       usernamePrefix: 'icon-search-route-user',
     })
     const app = createIconSearchTestApp(database)
-    await replaceIconSearchDocuments(
-      database,
-      [document({ id: 'lucide:users', prefix: 'lucide', name: 'users', collection: 'Lucide' })],
-      state,
-    )
+    await replaceIconSearchDocuments(database, [
+      builtinSearchFacts('lucide', 'users', { collection: 'Lucide' }),
+    ])
 
     const response = await app.request('/api/icons/search?keyword=lucide:users&limit=20', {
       headers: authenticated.authHeaders,
@@ -148,19 +121,16 @@ describe('icon search routes', () => {
         palette: false,
       })
       .returning()
-    await replaceIconSearchDocuments(
-      database,
-      [
-        document({
-          id: 'acme:logo',
-          prefix: 'acme',
-          name: 'logo',
-          collection: 'Acme Icons',
-          customIconId: icon!.id,
-        }),
-      ],
-      state,
-    )
+    await replaceIconSearchDocuments(database, [
+      deriveCustomIconSearchFacts({
+        prefix: 'acme',
+        name: 'logo',
+        collection: 'Acme Icons',
+        palette: false,
+        customIconId: icon!.id,
+        keywords: [],
+      }),
+    ])
 
     const app = createIconSearchTestApp(database)
 
@@ -206,19 +176,16 @@ describe('icon search routes', () => {
         palette: false,
       })
       .returning()
-    await replaceIconSearchDocuments(
-      database,
-      [
-        document({
-          id: 'acme:logo',
-          prefix: 'acme',
-          name: 'logo',
-          collection: 'Acme Icons',
-          customIconId: icon!.id,
-        }),
-      ],
-      state,
-    )
+    await replaceIconSearchDocuments(database, [
+      deriveCustomIconSearchFacts({
+        prefix: 'acme',
+        name: 'logo',
+        collection: 'Acme Icons',
+        palette: false,
+        customIconId: icon!.id,
+        keywords: [],
+      }),
+    ])
 
     const app = createIconSearchTestApp(database)
 

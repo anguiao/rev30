@@ -8,14 +8,27 @@ import {
   type IconSearchResponse,
 } from '@rev30/contracts'
 import type { IconifyJSON } from '@iconify/types'
-import { afterEach, describe, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { afterEach, beforeAll, describe, expect, onTestFinished, vi } from 'vitest'
 import { createApp } from '../../../helpers/app'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
-import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
+import {
+  builtinSearchFacts,
+  replaceIconSearchDocuments,
+  testIconSearchState,
+} from '../../../fixtures/icon-search'
 import { customIconSetIcons, iconSearchDocuments } from '../../../../src/db/schema'
 import { formatIconSearchCursor } from '../../../../src/modules/icons/cursor'
+import { setIconSearchStatus } from '../../../../src/modules/icons/search/indexing/state'
+import {
+  getRuntimeIconSearchConcepts,
+  initializeRuntimeIconSearchConcepts,
+} from '../../../../src/modules/icons/search/runtime-concepts'
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -32,9 +45,52 @@ function createOperationLogReceiver(events: OperationLogEvent[]) {
 }
 
 describe('icon set routes', () => {
+  beforeAll(() => initializeRuntimeIconSearchConcepts())
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  dbTest(
+    'reports dictionary failure across search routes while the index prepares',
+    async ({ db }) => {
+      const directory = await mkdtemp(join(tmpdir(), 'icon-search-missing-concepts-'))
+      onTestFinished(async () => {
+        setIconSearchStatus('ready')
+        await initializeRuntimeIconSearchConcepts()
+        await rm(directory, { recursive: true, force: true })
+      })
+      const moduleUrl = pathToFileURL(join(directory, 'dist/index.js')).href
+      await expect(initializeRuntimeIconSearchConcepts(moduleUrl)).rejects.toThrow(/ENOENT/)
+      setIconSearchStatus('preparing')
+      const { authHeaders: headers } = await createSystemAccessFixture(db, {
+        accessCodes: ['content:icon-set:list'],
+      })
+      const app = createApp(db)
+
+      for (const path of [
+        '/api/icons/search?keyword=lucide:camera',
+        '/api/icons/search?keyword=camera',
+        '/api/content/icon-sets/builtin/icons?keyword=lucide:camera',
+        '/api/content/icon-sets/custom/icons?keyword=acme:camera',
+      ]) {
+        const response = await app.request(path, { headers })
+        expect(response.status).toBe(503)
+        expect(await response.json()).toEqual({
+          code: 'ICON_SEARCH_UNAVAILABLE',
+          message: '图标搜索暂不可用',
+        })
+      }
+
+      for (const path of [
+        '/api/icons/search?limit=1',
+        '/api/content/icon-sets/builtin/icons?prefix=lucide&pageSize=1',
+        '/api/content/icon-sets/custom/icons?pageSize=1',
+      ]) {
+        expect((await app.request(path, { headers })).status).toBe(200)
+      }
+    },
+  )
 
   dbTest(
     'rejects invalid upload metadata before reading files or writing icons',
@@ -84,12 +140,7 @@ describe('icon set routes', () => {
       ],
       usernamePrefix: 'icon-keywords-user',
     })
-    await replaceIconSearchDocuments(db, [], {
-      indexVersion: 'keywords-test',
-      iconPackageVersion: 'test',
-      searchDataVersion: 'test',
-      rulesVersion: '1',
-    })
+    await replaceIconSearchDocuments(db, [])
     const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
     await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
@@ -135,7 +186,7 @@ describe('icon set routes', () => {
     expect(await db.select().from(iconSearchDocuments)).toEqual([
       expect.objectContaining({
         id: 'acme-keywords:logo',
-        exactPhrases: expect.arrayContaining(['current keyword']),
+        exactKeys: expect.arrayContaining(['current keyword']),
       }),
     ])
 
@@ -206,24 +257,24 @@ describe('icon set routes', () => {
   )
 
   dbTest.for(['builtin', 'custom'] as const)(
-    'rejects out-of-range primary match counts in %s search cursors',
+    'rejects out-of-range match scores in %s search cursors',
     async (source, { db }) => {
       const authenticated = await createSystemAccessFixture(db, {
         accessCodes: ['content:icon-set:list'],
         usernamePrefix: 'icon-set-cursor-range-user',
       })
-      const indexVersion = 'cursor-range-test'
-      await replaceIconSearchDocuments(db, [], {
-        indexVersion,
-        iconPackageVersion: 'test',
-        searchDataVersion: 'test',
-        rulesVersion: 'test',
-      })
+      await replaceIconSearchDocuments(db, [])
+      const { queryRulesVersion } = getRuntimeIconSearchConcepts()
       const cursor = formatIconSearchCursor(
-        { source, query: 'camera', dataVersion: indexVersion },
         {
-          level: 0,
-          primaryMatches: 2_147_483_648,
+          source,
+          query: 'camera',
+          dataVersion: testIconSearchState.indexVersion,
+          queryRulesVersion,
+        },
+        {
+          tier: 0,
+          matchScore: 2_147_483_648,
           rank: '0',
           preference: 0,
           id: 'test:camera',
@@ -284,34 +335,9 @@ describe('icon set routes', () => {
       usernamePrefix: 'icon-set-builtin-icons-user',
     })
     const app = createApp(database)
-    await replaceIconSearchDocuments(
-      database,
-      [
-        {
-          id: 'lucide:sun',
-          prefix: 'lucide',
-          name: 'sun',
-          source: 'builtin',
-          collection: 'Lucide',
-          palette: false,
-          customIconId: null,
-          exactPhrases: ['sun'],
-          primaryTokens: ['sun'],
-          fullTokens: ['sun'],
-          primaryEnglishTerms: ['sun'],
-          auxiliaryEnglishTerms: [],
-          fullExpressions: [],
-          primaryExpressions: [],
-          exactExpressions: [],
-        },
-      ],
-      {
-        indexVersion: 'test',
-        iconPackageVersion: 'test',
-        searchDataVersion: 'test',
-        rulesVersion: '1',
-      },
-    )
+    await replaceIconSearchDocuments(database, [
+      builtinSearchFacts('lucide', 'sun', { collection: 'Lucide' }),
+    ])
 
     const response = await app.request(
       '/api/content/icon-sets/builtin/icons?prefix=lucide&keyword=sun',

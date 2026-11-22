@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { iconSetIconItemSchema } from '@rev30/contracts'
 import { dbTest } from '../../../../fixtures/database'
-import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
+import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
+
+async function loadBuiltinIconSearchService() {
+  const { initializeRuntimeIconSearchConcepts } =
+    await import('../../../../../src/modules/icons/search/runtime-concepts')
+  await initializeRuntimeIconSearchConcepts()
+  return import('../../../../../src/modules/content/icon-sets/builtin/service')
+}
 
 afterEach(() => {
   vi.doUnmock('@iconify/json')
@@ -12,31 +19,10 @@ describe('built-in icon browsing', () => {
   dbTest('returns package-defined positive decimal viewBox dimensions', async ({ db }) => {
     vi.resetModules()
     vi.doUnmock('@iconify/json')
-    await replaceIconSearchDocuments(
-      db,
-      [
-        {
-          id: 'formkit:currency',
-          prefix: 'formkit',
-          name: 'currency',
-          source: 'builtin',
-          collection: 'FormKit Icons',
-          palette: false,
-          customIconId: null,
-          exactPhrases: ['currency'],
-          primaryTokens: ['currency'],
-          fullTokens: ['currency'],
-          primaryEnglishTerms: ['currency'],
-          auxiliaryEnglishTerms: [],
-          fullExpressions: [],
-          primaryExpressions: [],
-          exactExpressions: [],
-        },
-      ],
-      { indexVersion: 'v1', iconPackageVersion: 'v1', searchDataVersion: 'v1', rulesVersion: '3' },
-    )
-    const { listBuiltinIcons } =
-      await import('../../../../../src/modules/content/icon-sets/builtin/service')
+    await replaceIconSearchDocuments(db, [
+      builtinSearchFacts('formkit', 'currency', { collection: 'FormKit Icons' }),
+    ])
+    const { listBuiltinIcons } = await loadBuiltinIconSearchService()
     const result = await listBuiltinIcons(
       { keyword: 'currency', prefix: 'formkit', cursor: undefined, pageSize: 10 },
       db,
@@ -51,36 +37,13 @@ describe('built-in icon browsing', () => {
     async ({ db }) => {
       vi.resetModules()
       vi.doUnmock('@iconify/json')
-      await replaceIconSearchDocuments(
-        db,
-        [
-          {
-            id: 'thesvg-color:logitech-g',
-            prefix: 'thesvg-color',
-            name: 'logitech-g',
-            source: 'builtin',
-            collection: 'The SVG Color Icons',
-            palette: true,
-            customIconId: null,
-            exactPhrases: ['logitech-g'],
-            primaryTokens: ['logitech', 'g'],
-            fullTokens: ['logitech', 'g'],
-            primaryEnglishTerms: ['logitech', 'g'],
-            auxiliaryEnglishTerms: [],
-            fullExpressions: [],
-            primaryExpressions: [],
-            exactExpressions: [],
-          },
-        ],
-        {
-          indexVersion: 'v1',
-          iconPackageVersion: 'v1',
-          searchDataVersion: 'v1',
-          rulesVersion: '3',
-        },
-      )
-      const { listBuiltinIcons } =
-        await import('../../../../../src/modules/content/icon-sets/builtin/service')
+      await replaceIconSearchDocuments(db, [
+        builtinSearchFacts('thesvg-color', 'logitech-g', {
+          collection: 'The SVG Color Icons',
+          palette: true,
+        }),
+      ])
+      const { listBuiltinIcons } = await loadBuiltinIconSearchService()
       const result = await listBuiltinIcons(
         { keyword: 'logitech-g', prefix: 'thesvg-color', cursor: undefined, pageSize: 10 },
         db,
@@ -208,31 +171,8 @@ describe('built-in icon browsing', () => {
         height: 16,
       })),
     }))
-    await replaceIconSearchDocuments(
-      db,
-      [
-        {
-          id: 'fa:blank',
-          prefix: 'fa',
-          name: 'blank',
-          source: 'builtin',
-          collection: 'FA',
-          palette: false,
-          customIconId: null,
-          exactPhrases: ['blank'],
-          primaryTokens: ['blank'],
-          fullTokens: ['blank'],
-          primaryEnglishTerms: ['blank'],
-          auxiliaryEnglishTerms: [],
-          fullExpressions: [],
-          primaryExpressions: [],
-          exactExpressions: [],
-        },
-      ],
-      { indexVersion: 'v1', iconPackageVersion: 'v1', searchDataVersion: 'v1', rulesVersion: '1' },
-    )
-    const { listBuiltinIcons } =
-      await import('../../../../../src/modules/content/icon-sets/builtin/service')
+    await replaceIconSearchDocuments(db, [builtinSearchFacts('fa', 'blank', { collection: 'FA' })])
+    const { listBuiltinIcons } = await loadBuiltinIconSearchService()
     const result = await listBuiltinIcons(
       { keyword: 'blank', prefix: 'fa', cursor: undefined, pageSize: 10 },
       db,
@@ -254,31 +194,8 @@ describe('built-in icon browsing', () => {
         height: 12,
       })),
     }))
-    await replaceIconSearchDocuments(
-      db,
-      [
-        {
-          id: 'fa:turned',
-          prefix: 'fa',
-          name: 'turned',
-          source: 'builtin',
-          collection: 'FA',
-          palette: false,
-          customIconId: null,
-          exactPhrases: ['turned'],
-          primaryTokens: ['turned'],
-          fullTokens: ['turned'],
-          primaryEnglishTerms: ['turned'],
-          auxiliaryEnglishTerms: [],
-          fullExpressions: [],
-          primaryExpressions: [],
-          exactExpressions: [],
-        },
-      ],
-      { indexVersion: 'v1', iconPackageVersion: 'v1', searchDataVersion: 'v1', rulesVersion: '2' },
-    )
-    const { listBuiltinIcons } =
-      await import('../../../../../src/modules/content/icon-sets/builtin/service')
+    await replaceIconSearchDocuments(db, [builtinSearchFacts('fa', 'turned', { collection: 'FA' })])
+    const { listBuiltinIcons } = await loadBuiltinIconSearchService()
     const result = await listBuiltinIcons(
       { keyword: 'turned', prefix: 'fa', cursor: undefined, pageSize: 10 },
       db,

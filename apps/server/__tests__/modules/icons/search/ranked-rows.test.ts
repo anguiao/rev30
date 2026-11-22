@@ -1,14 +1,12 @@
-import { sql } from 'drizzle-orm'
 import { expect, vi } from 'vitest'
 import {
   compileIconSearchConcepts,
   type IconSearchCategory,
 } from '../../../../src/modules/icons/search/concepts'
-import { compactIconSearchKey } from '../../../../src/modules/icons/search/normalization'
+import { deriveIconSearchFacts } from '../../../../src/modules/icons/search/facts'
+import { insertDocumentBatch } from '../../../../src/modules/icons/search/indexing/sync'
 import { planIconSearchQuery } from '../../../../src/modules/icons/search/planner'
 import { findRankedIconSearchRows } from '../../../../src/modules/icons/search/ranked-rows'
-import { getIconPreference } from '../../../../src/modules/icons/search/rules'
-import { deriveSearchText } from '../../../../src/modules/icons/search/text'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
 const dictionary = compileIconSearchConcepts({
@@ -40,22 +38,12 @@ type FixtureDocument = {
 }
 
 async function insertDocuments(db: TestDatabase, documents: FixtureDocument[]) {
-  await db.execute(sql`
-    CREATE TEMP TABLE icon_search_documents (
-      id text PRIMARY KEY, prefix text NOT NULL, name text NOT NULL,
-      source text NOT NULL, collection text NOT NULL, palette boolean NOT NULL,
-      custom_icon_id uuid, category text NOT NULL, preference integer NOT NULL,
-      exact_keys text[] NOT NULL, tokens text[] NOT NULL, primary_tokens text[] NOT NULL,
-      related_tokens text[] NOT NULL, search_vector tsvector NOT NULL,
-      english_rank_vector tsvector NOT NULL
-    ) ON COMMIT DROP
-  `)
-
-  for (const [index, document] of documents.entries()) {
+  const facts = documents.map((document, index) => {
     const [prefix, name] = document.id.split(':') as [string, string]
     const {
       category = 'ui',
       keywords = [],
+      title,
       tags = [],
       classification = [],
       palette = false,
@@ -63,44 +51,21 @@ async function insertDocuments(db: TestDatabase, documents: FixtureDocument[]) {
     const source = category === 'custom' ? 'custom' : 'builtin'
     const customIconId =
       source === 'custom' ? `019938cd-c937-7000-8000-${String(index).padStart(12, '0')}` : null
-    const primary = [name, ...keywords, ...(document.title ? [document.title] : [])]
-    const auxiliary = [...classification, prefix]
-    const keys = (entries: string[]) => [
-      ...new Set(entries.flatMap((entry) => [entry, compactIconSearchKey(entry)])),
-    ]
-    const tokens = (entries: string[]) => [
-      ...new Set(entries.flatMap((entry) => deriveSearchText(entry).tokens)),
-    ]
-    const english = (entries: string[]) =>
-      tokens(entries)
-        .filter((term) => /^[a-z]+$/.test(term))
-        .sort()
-    const array = (values: string[]) =>
-      sql`ARRAY[${sql.join(
-        values.map((value) => sql`${value}`),
-        sql`, `,
-      )}]::text[]`
-    const primaryEnglish = english(primary)
-    const auxiliaryEnglish = english(auxiliary).filter((term) => !primaryEnglish.includes(term))
-    const nameVector = name.replaceAll('-', ' ')
-    const keywordVector = keywords.filter((keyword) => !/\p{Script=Han}/u.test(keyword)).join(' ')
-    const classificationVector = classification.join(' ')
-    const collectionVector = prefix.replaceAll('-', ' ')
-    await db.execute(sql`
-      INSERT INTO icon_search_documents VALUES (
-        ${document.id}, ${prefix}, ${name}, ${source}, ${prefix}, ${palette}, ${customIconId},
-        ${category}, ${getIconPreference({ prefix, palette })},
-        ${array(keys(primary))}, ${array(tokens([...keys(primary), ...auxiliary]))},
-        ${array(tokens(keys(primary)))}, ${array(keys(tags))},
-        setweight(to_tsvector('simple', ${nameVector}), 'A') ||
-          setweight(to_tsvector('simple', ${keywordVector}), 'B') ||
-          setweight(to_tsvector('simple', ${classificationVector}), 'C') ||
-          setweight(to_tsvector('simple', ${collectionVector}), 'D'),
-        setweight(to_tsvector('simple', ${primaryEnglish.join(' ')}), 'A') ||
-          setweight(to_tsvector('simple', ${auxiliaryEnglish.join(' ')}), 'B')
-      )
-    `)
-  }
+    return deriveIconSearchFacts(
+      {
+        id: document.id,
+        prefix,
+        name,
+        collection: prefix,
+        source,
+        category,
+        palette,
+        customIconId,
+      },
+      { keywords, titles: title ? [title] : [], tags, categories: classification },
+    )
+  })
+  await insertDocumentBatch(db, facts)
 }
 
 function search(

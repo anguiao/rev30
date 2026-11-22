@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { DbExecutor } from '../../../db'
-import type { IconSearchMetadata } from './document'
+import type { IconSearchMetadata } from './facts'
 import type { IconSearchQueryPlan } from './planner'
 import { compileRankedIconSearch } from './ranked-query'
 

@@ -26,37 +26,21 @@ import {
   lockIconSearchWrites,
   setIconSearchStatus,
 } from '../../../../../src/modules/icons/search/indexing/state'
-import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
-import { ICON_SEARCH_RULES_VERSION } from '../../../../../src/modules/icons/search/rules'
+import {
+  builtinSearchFacts,
+  replaceIconSearchDocuments,
+  testIconSearchState,
+} from '../../../../fixtures/icon-search'
+import { deriveCustomIconSearchFacts } from '../../../../../src/modules/icons/search/facts'
 import { eq } from 'drizzle-orm'
 import { dbTest } from '../../../../fixtures/database'
 import { migratePGlite } from '../../../../../src/db/migrate'
 import { relations } from '../../../../../src/db/relations'
 import { ICON_PACKAGE_VERSION } from '../../../../../src/modules/icons/builtin'
 
-const document = {
-  id: 'lucide:camera',
-  prefix: 'lucide',
-  name: 'camera',
-  source: 'builtin' as const,
-  collection: 'Lucide',
-  palette: false,
-  customIconId: null,
-  exactPhrases: ['camera'],
-  primaryTokens: ['camera'],
-  fullTokens: ['camera'],
-  primaryEnglishTerms: ['camera'],
-  auxiliaryEnglishTerms: [],
-  fullExpressions: [],
-  primaryExpressions: [],
-  exactExpressions: [],
-}
-const state = {
-  indexVersion: 'same',
-  iconPackageVersion: 'icons-v1',
-  searchDataVersion: 'data-v1',
-  rulesVersion: ICON_SEARCH_RULES_VERSION,
-}
+const document = builtinSearchFacts('lucide', 'camera', { collection: 'Lucide' })
+const updatedDocument = builtinSearchFacts('tabler', 'camera', { collection: 'Tabler' })
+const state = { ...testIconSearchState, indexVersion: 'same', iconPackageVersion: 'icons-v1' }
 
 afterEach(() => {
   setIconSearchStatus('ready')
@@ -93,20 +77,40 @@ describe('icon search lifecycle', () => {
     },
   )
 
+  dbTest(
+    'keeps incompatible committed documents unavailable after a failed update',
+    async ({ db }) => {
+      const previous = { ...state, indexRulesVersion: 'previous-rules' }
+      await replaceIconSearchDocuments(db, [document], previous)
+      await expect(
+        prepareIconSearchIndex(db, {
+          installedIconPackageVersion: state.iconPackageVersion,
+          loadArtifacts: async () => {
+            expect(assertIconSearchAvailable).toThrow(IconSearchPreparingError)
+            return { manifest: previous, documents: [document] }
+          },
+        }),
+      ).rejects.toThrow('incompatible index rules')
+      expect(assertIconSearchAvailable).toThrow(IconSearchUnavailableError)
+      expect(await db.select().from(iconSearchIndexState)).toEqual([
+        expect.objectContaining({ indexRulesVersion: previous.indexRulesVersion }),
+      ])
+    },
+  )
+
   dbTest('rejects artifacts built for a different installed icon package', async ({ db }) => {
     const logger = { error: vi.fn() }
     vi.spyOn(artifacts, 'readIconSearchManifest').mockResolvedValueOnce({
-      formatVersion: 5,
+      formatVersion: 6,
       contentFingerprint: '0'.repeat(64),
       iconPackageVersion: 'icons-v1',
-      searchDataVersion: 'data-v1',
-      rulesVersion: ICON_SEARCH_RULES_VERSION,
+      indexRulesVersion: state.indexRulesVersion,
+      officialChecksums: Array<string>(4).fill('0'.repeat(64)),
       indexVersion: 'same',
       counts: {
         definitions: 1,
         aliases: 0,
         documents: 1,
-        validTranslations: 0,
         chineseDocuments: 0,
       },
       files: [],
@@ -164,22 +168,22 @@ describe('icon search lifecycle', () => {
       db,
       [
         document,
-        {
-          ...document,
-          id: 'acme:logo',
+        deriveCustomIconSearchFacts({
           prefix: 'acme',
           name: 'logo',
-          source: 'custom',
+          collection: 'Acme',
+          palette: false,
           customIconId: '019938cd-c937-7000-8000-000000000001',
-        },
+          keywords: [],
+        }),
       ],
       state,
     )
     await prepareIconSearchIndex(db, {
       installedIconPackageVersion: state.iconPackageVersion,
       loadArtifacts: async () => ({
-        manifest: { ...state, indexVersion: 'data-v2-index', searchDataVersion: 'data-v2' },
-        documents: [{ ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' }],
+        manifest: { ...state, indexVersion: 'data-v2-index' },
+        documents: [updatedDocument],
       }),
     })
     expect((await db.select().from(iconSearchDocuments)).map((row) => row.id).sort()).toEqual([
@@ -191,7 +195,7 @@ describe('icon search lifecycle', () => {
       prepareIconSearchIndex(db, {
         installedIconPackageVersion: state.iconPackageVersion,
         loadArtifacts: async () => ({
-          manifest: { ...state, indexVersion: 'broken', searchDataVersion: 'data-v3' },
+          manifest: { ...state, indexVersion: 'broken' },
           documents: (function* () {
             yield document
             throw new Error('broken artifact')
@@ -216,12 +220,7 @@ describe('icon search lifecycle', () => {
             manifest: { ...state, indexVersion: 'stream-failure' },
             documents: (async function* () {
               for (let index = 0; index < 1_001; index++) {
-                yield {
-                  ...document,
-                  id: `bulk:icon-${index}`,
-                  prefix: 'bulk',
-                  name: `icon-${index}`,
-                }
+                yield builtinSearchFacts('bulk', `icon-${index}`)
               }
               throw new Error('artifact checksum mismatch')
             })(),
@@ -258,16 +257,16 @@ describe('icon search lifecycle', () => {
       db,
       [
         document,
-        {
-          ...document,
-          id: 'acme:stale',
+        deriveCustomIconSearchFacts({
           prefix: 'acme',
           name: 'stale',
-          source: 'custom',
+          collection: 'Acme',
+          palette: false,
           customIconId: icon!.id,
-        },
+          keywords: [],
+        }),
       ],
-      { ...state, rulesVersion: 'old' },
+      { ...state, indexRulesVersion: 'old' },
     )
     await prepareIconSearchIndex(db, {
       installedIconPackageVersion: state.iconPackageVersion,
@@ -310,17 +309,11 @@ describe('icon search lifecycle', () => {
           },
         ])
         .returning()
-      await replaceIconSearchDocuments(db, [], { ...state, rulesVersion: 'old' })
+      await replaceIconSearchDocuments(db, [], { ...state, indexRulesVersion: 'old' })
 
-      const documents = Array.from({ length: 1_001 }, (_, index) => ({
-        ...document,
-        id: `bulk:icon-${index}`,
-        prefix: 'bulk',
-        name: `icon-${index}`,
-        primaryTokens: ['bulk', `icon${index}`],
-        fullTokens: ['bulk', `icon${index}`],
-        primaryEnglishTerms: ['bulk'],
-      }))
+      const documents = Array.from({ length: 1_001 }, (_, index) =>
+        builtinSearchFacts('bulk', `icon-${index}`),
+      )
       let markStaged!: () => void
       const staged = new Promise<void>((resolve) => {
         markStaged = resolve
@@ -394,14 +387,14 @@ describe('icon search lifecycle', () => {
       db,
       [
         document,
-        {
-          ...document,
-          id: 'acme:collision',
+        deriveCustomIconSearchFacts({
           prefix: 'acme',
           name: 'collision',
-          source: 'custom',
+          collection: 'Acme',
+          palette: false,
           customIconId: '019938cd-c937-7000-8000-000000000003',
-        },
+          keywords: [],
+        }),
       ],
       state,
     )
@@ -425,8 +418,8 @@ describe('icon search lifecycle', () => {
       prepareIconSearchIndex(db, {
         installedIconPackageVersion: state.iconPackageVersion,
         loadArtifacts: async () => ({
-          manifest: { ...state, indexVersion: 'broken-switch', searchDataVersion: 'data-v2' },
-          documents: [{ ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' }],
+          manifest: { ...state, indexVersion: 'broken-switch' },
+          documents: [updatedDocument],
         }),
       }),
     ).rejects.toThrow()
@@ -461,12 +454,14 @@ describe('icon search lifecycle', () => {
       const indexRows = Array.isArray(indexes) ? indexes : indexes.rows
       expect(indexRows.map((row) => row.indexname)).toEqual([
         'icon_search_documents_custom_icon_id_unique',
-        'icon_search_documents_exact_phrases_gin',
-        'icon_search_documents_full_expressions_gin',
-        'icon_search_documents_full_tokens_gin',
+        'icon_search_documents_exact_keys_gin',
+        'icon_search_documents_name_idx',
         'icon_search_documents_pkey',
+        'icon_search_documents_primary_tokens_gin',
+        'icon_search_documents_related_tokens_gin',
         'icon_search_documents_search_vector_gin',
         'icon_search_documents_source_prefix_id_idx',
+        'icon_search_documents_tokens_gin',
       ])
     },
   )
@@ -543,7 +538,7 @@ describe('icon search lifecycle', () => {
         installedIconPackageVersion: state.iconPackageVersion,
         loadArtifacts: async () => ({
           manifest: { ...state, indexVersion: 'cleanup-failed' },
-          documents: [{ ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' }],
+          documents: [updatedDocument],
         }),
         onCleanupError,
       }),
@@ -575,17 +570,16 @@ describe('icon search lifecycle', () => {
     `)
     const logger = { error: vi.fn() }
     const manifest = {
-      formatVersion: 5 as const,
+      formatVersion: 6 as const,
       contentFingerprint: '0'.repeat(64),
       iconPackageVersion: ICON_PACKAGE_VERSION,
-      searchDataVersion: 'data-v2',
-      rulesVersion: ICON_SEARCH_RULES_VERSION,
+      indexRulesVersion: state.indexRulesVersion,
+      officialChecksums: Array<string>(4).fill('0'.repeat(64)),
       indexVersion: 'background-cleanup-failed',
       counts: {
         definitions: 1,
         aliases: 0,
         documents: 1,
-        validTranslations: 0,
         chineseDocuments: 0,
       },
       files: [],

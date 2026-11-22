@@ -5,6 +5,7 @@ import { createDb } from './db'
 import { readAttachmentConfig } from './modules/attachments/config'
 import { createAttachmentStorage } from './modules/attachments/storage'
 import { startIconSearchIndexPreparation } from './modules/icons/search/indexing/lifecycle'
+import { initializeRuntimeIconSearchConcepts } from './modules/icons/search/runtime-concepts'
 import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/config'
 import { startScheduledJobs } from './modules/ops/scheduled-jobs/startup'
 import { logger } from './runtime/logger'
@@ -25,6 +26,9 @@ const scheduledJobs = await startScheduledJobs({
   retention: scheduledJobRetention,
 })
 const operationLog = createOperationLogRuntime(db, logger)
+await initializeRuntimeIconSearchConcepts().catch((error: unknown) => {
+  logger.error({ err: error }, 'icon search concept dictionary initialization failed')
+})
 const iconSearchPreparation = startIconSearchIndexPreparation(db, logger)
 
 const app = createApp(db, {

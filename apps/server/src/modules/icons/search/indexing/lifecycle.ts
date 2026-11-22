@@ -13,7 +13,7 @@ import {
   type IconSearchStateInput,
 } from './state'
 import { replaceBuiltinIconSearchDocuments } from './rebuild'
-import { ICON_SEARCH_RULES_VERSION } from '../rules'
+import { ICON_SEARCH_INDEX_RULES_VERSION } from '../rules'
 
 type IconSearchArtifacts = {
   manifest: IconSearchStateInput
@@ -33,23 +33,23 @@ export async function prepareIconSearchIndex(database: Db, input: PreparationInp
     compatible = Boolean(
       committed &&
       committed.iconPackageVersion === input.installedIconPackageVersion &&
-      committed.rulesVersion === ICON_SEARCH_RULES_VERSION,
+      committed.indexRulesVersion === ICON_SEARCH_INDEX_RULES_VERSION,
     )
     setIconSearchStatus(compatible ? 'ready' : 'preparing')
     const { manifest, documents } = await input.loadArtifacts()
     if (manifest.iconPackageVersion !== input.installedIconPackageVersion) {
       throw new Error('Icon search artifacts do not match the installed icon package')
     }
-    if (manifest.rulesVersion !== ICON_SEARCH_RULES_VERSION) {
-      throw new Error('Icon search artifacts use incompatible search rules')
+    if (manifest.indexRulesVersion !== ICON_SEARCH_INDEX_RULES_VERSION) {
+      throw new Error('Icon search artifacts use incompatible index rules')
     }
-    if (committed?.indexVersion === manifest.indexVersion) {
+    if (compatible && committed?.indexVersion === manifest.indexVersion) {
       setIconSearchStatus('ready')
       return 'reused' as const
     }
 
     await replaceBuiltinIconSearchDocuments(database, documents, manifest, {
-      rebuildCustom: !committed || committed.rulesVersion !== manifest.rulesVersion,
+      rebuildCustom: committed?.indexRulesVersion !== manifest.indexRulesVersion,
       onCleanupError: input.onCleanupError,
     })
     setIconSearchStatus('ready')

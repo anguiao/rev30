@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect } from 'vitest'
+import { beforeAll, describe, expect, onTestFinished } from 'vitest'
 import {
   customIconSetIcons,
   customIconSets,
@@ -9,15 +9,20 @@ import { createCustomIconSetService } from '../../../../../src/modules/content/i
 import { createCustomIconSetRepository } from '../../../../../src/modules/content/icon-sets/custom/repository'
 import { CustomIconSetNotFoundError } from '../../../../../src/modules/content/icon-sets/custom/errors'
 import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custom/svg'
-import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
+import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
 import { prepareIconSearchIndex } from '../../../../../src/modules/icons/search/indexing/lifecycle'
+import { setIconSearchStatus } from '../../../../../src/modules/icons/search/indexing/state'
+import { initializeRuntimeIconSearchConcepts } from '../../../../../src/modules/icons/search/runtime-concepts'
 import { IconSearchUnavailableError } from '../../../../../src/modules/icons/errors'
 import { dbTest } from '../../../../fixtures/database'
 
 const svg = '<svg viewBox="0 0 24 24"><path d="M0 0h10v10H0z" /></svg>'
 
 describe('custom icon search synchronization', () => {
+  beforeAll(() => initializeRuntimeIconSearchConcepts())
+
   dbTest('gates non-empty search while normalized blank input still browses', async ({ db }) => {
+    onTestFinished(() => setIconSearchStatus('ready'))
     const service = createCustomIconSetService(db)
     const [set] = await db
       .insert(customIconSets)
@@ -93,7 +98,7 @@ describe('custom icon search synchronization', () => {
       expect(await db.select().from(iconSearchDocuments)).toEqual([
         expect.objectContaining({
           palette: !parsed.palette,
-          exactPhrases: ['logo', 'brand'],
+          exactKeys: ['logo', 'brand'],
           preference: parsed.palette ? 1 : 0,
         }),
       ])
@@ -143,34 +148,9 @@ describe('custom icon search synchronization', () => {
     async ({ db }) => {
       const repository = createCustomIconSetRepository(db)
       const set = await repository.createSet({ prefix: 'acme', name: 'Acme', description: null })
-      await replaceIconSearchDocuments(
-        db,
-        [
-          {
-            id: 'acme:logo',
-            prefix: 'acme',
-            name: 'logo',
-            source: 'builtin',
-            collection: 'Conflict',
-            palette: false,
-            customIconId: null,
-            exactPhrases: ['logo'],
-            primaryTokens: ['logo'],
-            fullTokens: ['logo'],
-            primaryEnglishTerms: ['logo'],
-            auxiliaryEnglishTerms: [],
-            fullExpressions: [],
-            primaryExpressions: [],
-            exactExpressions: [],
-          },
-        ],
-        {
-          indexVersion: 'v1',
-          iconPackageVersion: 'v1',
-          searchDataVersion: 'v1',
-          rulesVersion: '1',
-        },
-      )
+      await replaceIconSearchDocuments(db, [
+        builtinSearchFacts('acme', 'logo', { collection: 'Conflict' }),
+      ])
       const parsed = await parseSvgIcon('Logo.svg', svg)
       await expect(repository.createIcon(set.set, parsed)).rejects.toThrow()
       expect(await db.select().from(customIconSetIcons)).toEqual([])
@@ -218,7 +198,7 @@ describe('custom icon search synchronization', () => {
       expect(created).toMatchObject({
         source: 'custom',
         collection: 'Acme Icons',
-        exactPhrases: ['logo'],
+        exactKeys: ['logo'],
       })
 
       await service.updateIcon('acme', 'logo', { name: 'brand-logo' })

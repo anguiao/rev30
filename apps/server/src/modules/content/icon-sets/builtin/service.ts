@@ -16,7 +16,6 @@ import {
   loadIconCollections,
 } from '../../../icons/builtin'
 import { searchIconDocuments } from '../../../icons/search/repository'
-import { assertIconSearchAvailable } from '../../../icons/search/indexing/state'
 import { formatIconBrowseCursor, parseIconBrowseCursor } from '../../../icons/cursor'
 
 function mapIcon(
@@ -111,7 +110,6 @@ export async function listBuiltinIcons(
   const keyword = normalizeSearchText(query.keyword ?? '')
   if (!keyword) return browseBuiltinIcons(query)
 
-  assertIconSearchAvailable()
   const result = await searchIconDocuments(database, {
     keyword,
     source: 'builtin',

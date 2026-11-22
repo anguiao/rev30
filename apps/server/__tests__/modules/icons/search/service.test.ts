@@ -1,10 +1,13 @@
-import { describe, expect } from 'vitest'
+import { beforeAll, describe, expect } from 'vitest'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
-import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
+import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { IconSearchPreparingError } from '../../../../src/modules/icons/errors'
+import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
 import { dbTest } from '../../../fixtures/database'
 
 describe('unified icon search service', () => {
+  beforeAll(() => initializeRuntimeIconSearchConcepts())
+
   dbTest('serves limited recommendations in order without a committed index', async ({ db }) => {
     const result = await createIconSearchService(db).searchIcons({ keyword: '   ', limit: 3 })
     expect(result.list.map((icon) => icon.icon)).toEqual([
@@ -25,34 +28,9 @@ describe('unified icon search service', () => {
   )
 
   dbTest('maps database-ranked builtin results through the selector response', async ({ db }) => {
-    await replaceIconSearchDocuments(
-      db,
-      [
-        {
-          id: 'lucide:camera',
-          prefix: 'lucide',
-          name: 'camera',
-          source: 'builtin',
-          collection: 'Lucide',
-          palette: false,
-          customIconId: null,
-          exactPhrases: ['camera'],
-          primaryTokens: ['camera'],
-          fullTokens: ['camera'],
-          primaryEnglishTerms: ['camera'],
-          auxiliaryEnglishTerms: [],
-          fullExpressions: [],
-          primaryExpressions: [],
-          exactExpressions: [],
-        },
-      ],
-      {
-        indexVersion: 'v1',
-        iconPackageVersion: 'i1',
-        searchDataVersion: 'd1',
-        rulesVersion: '1',
-      },
-    )
+    await replaceIconSearchDocuments(db, [
+      builtinSearchFacts('lucide', 'camera', { collection: 'Lucide' }),
+    ])
     await expect(
       createIconSearchService(db).searchIcons({ keyword: 'cam', limit: 10 }),
     ).resolves.toEqual({

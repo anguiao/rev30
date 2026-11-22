@@ -11,7 +11,6 @@ import type {
 } from '@rev30/contracts'
 import type { Db } from '../../../../db'
 import { loadIconCollections } from '../../../icons/builtin'
-import { assertIconSearchAvailable } from '../../../icons/search/indexing/state'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
@@ -128,7 +127,6 @@ export function createCustomIconSetService(database: Db) {
 
     async listIcons(query: IconSetIconListQuery) {
       const keyword = normalizeSearchText(query.keyword ?? '')
-      if (keyword) assertIconSearchAvailable()
       const result = await repository.listIcons({ ...query, keyword: keyword || undefined })
 
       return {

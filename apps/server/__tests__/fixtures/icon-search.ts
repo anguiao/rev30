@@ -1,29 +1,48 @@
 import type { Db } from '../../src/db'
 import { iconSearchDocuments, iconSearchIndexState } from '../../src/db/schema'
-import type { IconSearchDocument } from '../../src/modules/icons/search/document'
+import { deriveIconSearchFacts, type IconSearchFacts } from '../../src/modules/icons/search/facts'
 import {
   lockIconSearchWrites,
   type IconSearchStateInput,
 } from '../../src/modules/icons/search/indexing/state'
 import { insertDocumentBatch } from '../../src/modules/icons/search/indexing/sync'
-import {
-  iterateIconSearchArtifacts,
-  readIconSearchManifest,
-} from '../../src/modules/icons/search/artifacts/reader'
-import type { IconSearchArtifactDocument } from '../../src/modules/icons/search/artifacts/schema'
+import { ICON_SEARCH_INDEX_RULES_VERSION } from '../../src/modules/icons/search/rules'
 
-export async function readIconSearchArtifacts(directory: string) {
-  const manifest = await readIconSearchManifest(directory)
-  const documents: IconSearchArtifactDocument[] = []
-  for await (const document of iterateIconSearchArtifacts(directory, manifest))
-    documents.push(document)
-  return { manifest, documents }
+export const testIconSearchState = {
+  indexVersion: 'test',
+  iconPackageVersion: 'test',
+  indexRulesVersion: ICON_SEARCH_INDEX_RULES_VERSION,
+} satisfies IconSearchStateInput
+
+type BuiltinFixtureOptions = Partial<Pick<IconSearchFacts, 'collection' | 'palette'>> &
+  Parameters<typeof deriveIconSearchFacts>[1] & {
+    category?: Exclude<IconSearchFacts['category'], 'custom'>
+  }
+
+export function builtinSearchFacts(
+  prefix: string,
+  name: string,
+  { category = 'ui', collection = prefix, palette = false, ...fields }: BuiltinFixtureOptions = {},
+) {
+  return deriveIconSearchFacts(
+    {
+      id: `${prefix}:${name}`,
+      prefix,
+      name,
+      collection,
+      palette,
+      category,
+      source: 'builtin',
+      customIconId: null,
+    },
+    fields,
+  )
 }
 
 export async function replaceIconSearchDocuments(
   database: Db,
-  documents: IconSearchDocument[],
-  state: IconSearchStateInput,
+  documents: IconSearchFacts[],
+  state: IconSearchStateInput = testIconSearchState,
 ) {
   await database.transaction(async (tx) => {
     await lockIconSearchWrites(tx)

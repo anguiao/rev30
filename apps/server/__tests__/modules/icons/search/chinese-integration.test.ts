@@ -1,569 +1,223 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { lookupCollection } from '@iconify/json'
-import { beforeAll, describe, expect, onTestFinished } from 'vitest'
-
-import { listBuiltinIcons } from '../../../../src/modules/content/icon-sets/builtin/service'
-import { buildIconSearchArtifacts } from '../../../../scripts/icon-search/build/generate-artifacts'
+import {
+  builtinIconListResponseSchema,
+  customIconListResponseSchema,
+  iconSearchResponseSchema,
+} from '@rev30/contracts'
+import { beforeAll, describe, expect } from 'vitest'
+import { loadIconPackage } from '../../../../scripts/icon-search/build/package-source'
+import { deriveCollectionSearchFacts } from '../../../../scripts/icon-search/build/package-facts'
+import { iconSearchResourcesDirectory } from '../../../../scripts/icon-search/build/maintenance'
+import { loadOfficialIconSearchData } from '../../../../scripts/icon-search/official/load'
+import { createCustomIconSetService } from '../../../../src/modules/content/icon-sets/custom/service'
+import type { IconSearchFacts } from '../../../../src/modules/icons/search/facts'
+import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
-import { loadMaintainedSearchData } from '../../../../scripts/icon-search/build/maintenance'
-import { readIconSearchArtifacts, replaceIconSearchDocuments } from '../../../fixtures/icon-search'
-import { searchIconDocuments } from '../../../../src/modules/icons/search/repository'
 import { dbTest } from '../../../fixtures/database'
+import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
+import { createApp } from '../../../helpers/app'
+import { createSystemAccessFixture } from '../../../helpers/auth'
 
-const fixtureCategories = [
-  {
-    prefix: 'fa6-solid',
-    category: 'Moving',
-    name: 'box-open',
-    query: '搬家',
-    unrelatedQuery: '移动',
-  },
-  {
-    prefix: 'ginetex',
-    category: 'Professional Care',
-    name: 'do-not-wet-clean',
-    query: '专业洗护',
-    unrelatedQuery: '专业护理',
-  },
-  {
-    prefix: 'qlementine-icons',
-    category: 'Instrument',
-    name: 'accordion-16',
-    query: '乐器',
-    unrelatedQuery: '仪器',
-  },
-]
-
-const fixtureIconOwners = new Set([
-  ...fixtureCategories.map(({ prefix, name }) => `${prefix}:${name}`),
+const builtinIds = new Set([
   'ant-design:bold',
-  'arcticons:minecraft-alt-2',
-  'arcticons:google-play',
   'bxl:windows',
   'carbon:data-table',
-  'circle-flags:in',
+  'cib:internet-explorer',
   'cil:account-logout',
-  'fa6-solid:bug',
-  'fluent:color-16-filled',
-  'fa6-brands:apple',
+  'circle-flags:cn',
+  'circle-flags:in',
+  'emojione:computer-mouse',
+  'emojione:mouse',
+  'file-icons:adobe',
   'file-icons:edge',
+  'file-icons:npm',
   'heroicons:camera',
-  'lucide:bell',
-  'lucide:calendar',
+  'icon-park-outline:block-seven',
+  'logos:flask',
   'logos:microsoft-windows',
-  'logos:netflix-icon',
-  'logos:google-workspace',
-  'material-symbols:cell-merge',
-  'material-symbols:cell-tower',
-  'material-symbols:brand-awareness-outline-rounded',
-  'material-symbols-light:brand-family',
-  'material-symbols:folder',
-  'mdi:api',
-  'mdi:account',
+  'lucide:bell',
+  'lucide:bluetooth',
+  'lucide:calendar',
+  'lucide:flask-round',
+  'lucide:folder-open',
+  'lucide:heading-4',
+  'lucide:log-out',
+  'lucide:logs',
+  'lucide:mouse',
+  'lucide:rotate-3d',
+  'lucide:server',
+  'material-symbols:notifications',
   'mdi:account-alert',
+  'mdi:bell',
   'mdi:cart',
   'mdi:color',
-  'mdi:cpu-32-bit',
   'mdi:to-do',
-  'ion:construct',
+  'mdi:trash-can',
   'oi:account-logout',
-  'ph:user',
+  'ri:file-add-line',
+  'ri:file-line',
   'solar:calendar-linear',
   'system-uicons:user-add',
-  'simple-icons:adobe',
-  'simple-icons:alipay',
-  'simple-icons:apple',
-  'simple-icons:baidu',
-  'simple-icons:google',
-  'simple-icons:huawei',
-  'simple-icons:microsoft',
-  'simple-icons:taobao',
-  'simple-icons:wechat',
-  'simple-icons:xiaomi',
-  'streamline-logos:ubisoft-logo',
   'tabler:database',
+  'twemoji:computer-mouse',
+  'twemoji:face-with-tears-of-joy',
   'twemoji:red-paper-lantern',
+  'twemoji:rocket',
 ])
+const svg = '<svg viewBox="0 0 24 24"><path d="M0 0h10v10H0z" /></svg>'
 
-let maintained: Awaited<ReturnType<typeof loadMaintainedSearchData>>
+let facts: IconSearchFacts[]
 
 beforeAll(async () => {
-  const allMaintained = await loadMaintainedSearchData(join(process.cwd(), 'resources/icon-search'))
-  maintained = {
-    ...allMaintained,
-    translations: allMaintained.translations.filter((record) =>
-      record.kind === 'icon'
-        ? fixtureIconOwners.has(record.owner)
-        : (record.owner.prefix === 'mdi' && record.owner.category === 'Account / User') ||
-          fixtureCategories.some(
-            ({ prefix, category }) =>
-              record.owner.prefix === prefix && record.owner.category === category,
-          ),
-    ),
-  }
+  const [iconPackage, official] = await Promise.all([
+    loadIconPackage(),
+    loadOfficialIconSearchData(iconSearchResourcesDirectory),
+    initializeRuntimeIconSearchConcepts(),
+  ])
+  const prefixes = new Set([...builtinIds].map((id) => id.slice(0, id.indexOf(':'))))
+  facts = iconPackage.collections
+    .filter(({ prefix }) => prefixes.has(prefix))
+    .flatMap((collection) =>
+      deriveCollectionSearchFacts(collection, official).filter(({ id }) => builtinIds.has(id)),
+    )
+  expect(new Set(facts.map(({ id }) => id))).toEqual(builtinIds)
 })
 
 describe('maintained Chinese icon search', () => {
-  dbTest(
-    'ranks real Chinese name terms before category terms within the same tier',
-    async ({ db }) => {
-      const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-field-ranking-'))
-      onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-      const owners = new Set(['mdi:account-alert', 'system-uicons:user-add'])
-      const { manifest } = await buildIconSearchArtifacts({
-        collections: [
-          {
-            prefix: 'mdi',
-            collection: 'Material Design Icons',
-            palette: false,
-            icons: ['account-alert'],
-            aliases: {},
-            categories: { 'Account / User': ['account-alert'] },
-          },
-          {
-            prefix: 'system-uicons',
-            collection: 'System UIcons',
-            palette: false,
-            icons: ['user-add'],
-            aliases: {},
-          },
-        ],
-        iconPackageVersion: 'test',
-        maintained: {
-          ...maintained,
-          translations: maintained.translations.filter((record) =>
-            record.kind === 'category' ? record.owner.prefix === 'mdi' : owners.has(record.owner),
-          ),
-        },
-        outputDirectory,
-      })
-      const { documents } = await readIconSearchArtifacts(outputDirectory)
-      await replaceIconSearchDocuments(db, documents, manifest)
-      const result = await searchIconDocuments(db, { keyword: '用户', limit: 10 })
-      expect(result.rows.map((row) => [row.id, row.level])).toEqual([
-        ['system-uicons:user-add', 1],
-        ['mdi:account-alert', 1],
-      ])
-    },
-  )
-
-  dbTest('searches real category translations with their collection context', async ({ db }) => {
-    const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-categories-'))
-    onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-    const collections = await Promise.all(
-      fixtureCategories.map(async ({ prefix, category, name }) => {
-        const iconSet = await lookupCollection(prefix)
-        expect(iconSet.icons).toHaveProperty(name)
-        expect(iconSet.categories?.[category]).toContain(name)
-        return {
-          prefix,
-          collection: prefix,
-          palette: false,
-          icons: [name],
-          aliases: {},
-          categories: {
-            [category]: iconSet.categories![category]!.filter((item) => item === name),
-          },
-        }
-      }),
-    )
-    const selectedIds = new Set(fixtureCategories.map(({ prefix, name }) => `${prefix}:${name}`))
-    const { manifest, excluded } = await buildIconSearchArtifacts({
-      collections,
-      iconPackageVersion: 'test',
-      maintained: {
-        ...maintained,
-        translations: maintained.translations.filter((record) =>
-          record.kind === 'icon'
-            ? selectedIds.has(record.owner)
-            : fixtureCategories.some(
-                ({ prefix, category }) =>
-                  record.owner.prefix === prefix && record.owner.category === category,
-              ),
-        ),
-      },
-      outputDirectory,
+  dbTest('serves the same ranked Chinese results in both public entry points', async ({ db }) => {
+    await replaceIconSearchDocuments(db, facts)
+    const { authHeaders: headers } = await createSystemAccessFixture(db, {
+      accessCodes: ['content:icon-set:list'],
     })
-    expect(excluded).toEqual([])
-    const { documents } = await readIconSearchArtifacts(outputDirectory)
-    await replaceIconSearchDocuments(db, documents, manifest)
+    const app = createApp(db)
 
-    for (const { prefix, name, query, unrelatedQuery } of fixtureCategories) {
-      const result = await searchIconDocuments(db, { keyword: query, limit: 10 })
-      expect(result.rows.map((row) => [row.id, row.level])).toEqual([[`${prefix}:${name}`, 1]])
-      const unrelated = await searchIconDocuments(db, { keyword: unrelatedQuery, limit: 10 })
-      expect(unrelated.rows).toEqual([])
+    for (const [keyword, expected] of [
+      ['通知', ['material-symbols:notifications', 'lucide:bell', 'mdi:bell']],
+      ['lucide 登出', ['lucide:log-out']],
+      ['luc 登出', ['lucide:log-out']],
+      ['日志', ['lucide:logs']],
+      ['俄罗斯方块', ['icon-park-outline:block-seven']],
+      ['登出 qzxmissing', []],
+    ] as const) {
+      const query = encodeURIComponent(keyword)
+      const selector = await app.request(`/api/icons/search?keyword=${query}`, { headers })
+      const library = await app.request(`/api/content/icon-sets/builtin/icons?keyword=${query}`, {
+        headers,
+      })
+      expect(selector.status, keyword).toBe(200)
+      expect(library.status, keyword).toBe(200)
+      const selectorBody = iconSearchResponseSchema.parse(await selector.json())
+      const libraryBody = builtinIconListResponseSchema.parse(await library.json())
+      expect(
+        selectorBody.list.map(({ icon }) => icon),
+        keyword,
+      ).toEqual(expected)
+      expect(
+        libraryBody.list.map(({ icon }) => icon),
+        keyword,
+      ).toEqual(expected)
     }
   })
 
   dbTest(
-    'indexes reviewed brand names and components without losing variants or adding parent brands',
+    'matches real package names, aliases, categories, and scoped official labels',
     async ({ db }) => {
-      const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-brands-'))
-      onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-      const cases = [
-        { prefix: 'simple-icons', name: 'apple', query: '苹果' },
-        { prefix: 'simple-icons', name: 'microsoft', query: '微软' },
-        { prefix: 'simple-icons', name: 'google', query: '谷歌' },
-        { prefix: 'simple-icons', name: 'wechat', query: '微信' },
-        { prefix: 'simple-icons', name: 'alipay', query: '支付宝' },
-        { prefix: 'simple-icons', name: 'huawei', query: '华为' },
-        { prefix: 'simple-icons', name: 'xiaomi', query: '小米' },
-        { prefix: 'simple-icons', name: 'baidu', query: '百度' },
-        { prefix: 'simple-icons', name: 'taobao', query: '淘宝' },
-        { prefix: 'fa6-brands', name: 'apple', query: '苹果' },
-        { prefix: 'logos', name: 'microsoft-windows', query: '微软' },
-        { prefix: 'logos', name: 'netflix-icon', query: '奈飞' },
-        { prefix: 'logos', name: 'google-workspace', query: '谷歌' },
-        { prefix: 'simple-icons', name: 'adobe', query: '奥多比' },
-        { prefix: 'streamline-logos', name: 'ubisoft-logo', query: '育碧' },
-        { prefix: 'arcticons', name: 'minecraft-alt-2', query: '我的世界 2' },
-        { prefix: 'arcticons', name: 'google-play', query: '谷歌' },
-        { prefix: 'file-icons', name: 'edge', query: 'edge' },
-        { prefix: 'bxl', name: 'windows', query: 'windows' },
-      ]
-      const selectedIds = new Set(cases.map(({ prefix, name }) => `${prefix}:${name}`))
-      const collections = [...new Set(cases.map(({ prefix }) => prefix))].map((prefix) => ({
-        prefix,
-        collection: prefix,
-        palette: false,
-        icons: cases.filter((entry) => entry.prefix === prefix).map(({ name }) => name),
-        aliases: {},
-      }))
-      const result = await buildIconSearchArtifacts({
-        collections,
-        iconPackageVersion: 'test',
-        maintained: {
-          ...maintained,
-          translations: maintained.translations.filter(
-            (record) => record.kind === 'icon' && selectedIds.has(record.owner),
-          ),
-        },
-        outputDirectory,
-      })
-      const { documents } = await readIconSearchArtifacts(outputDirectory)
-      await replaceIconSearchDocuments(db, documents, {
-        indexVersion: result.manifest.indexVersion,
-        iconPackageVersion: 'test',
-        searchDataVersion: maintained.dataVersion,
-        rulesVersion: result.manifest.rulesVersion,
-      })
-
+      await replaceIconSearchDocuments(db, facts)
       const selector = createIconSearchService(db)
-      for (const { prefix, name, query } of cases) {
-        const result = await selector.searchIcons({ keyword: query, limit: 20 })
-        expect(result.list.map((item) => item.icon)).toContain(`${prefix}:${name}`)
+      const search = async (keyword: string) =>
+        (await selector.searchIcons({ keyword, limit: 20 })).list.map(({ icon }) => icon)
+
+      for (const [keyword, id] of [
+        ['粗体', 'ant-design:bold'],
+        ['颜色', 'mdi:color'],
+        ['待办', 'mdi:to-do'],
+        ['账户 登出', 'cil:account-logout'],
+        ['账户 登出', 'oi:account-logout'],
+        ['日历', 'lucide:calendar'],
+        ['日历', 'solar:calendar-linear'],
+        ['数据库', 'tabler:database'],
+        ['服务器', 'lucide:server'],
+        ['蓝牙', 'lucide:bluetooth'],
+        ['购物车', 'mdi:cart'],
+        ['相机', 'heroicons:camera'],
+        ['数据表', 'carbon:data-table'],
+        ['红灯笼', 'twemoji:red-paper-lantern'],
+        ['笑哭', 'twemoji:face-with-tears-of-joy'],
+        ['火箭', 'twemoji:rocket'],
+        ['中国', 'circle-flags:cn'],
+        ['印度', 'circle-flags:in'],
+        ['电脑鼠标', 'twemoji:computer-mouse'],
+        ['打开的文件夹', 'lucide:folder-open'],
+        ['标题级别4', 'lucide:heading-4'],
+        ['3d', 'lucide:rotate-3d'],
+        ['internet-explorer', 'cib:internet-explorer'],
+      ] as const) {
+        expect(await search(keyword), keyword).toContain(id)
       }
-      const microsoft = await selector.searchIcons({ keyword: '微软', limit: 20 })
-      expect(microsoft.list.map((item) => item.icon)).not.toContain('file-icons:edge')
-      expect(microsoft.list.map((item) => item.icon)).not.toContain('bxl:windows')
-      const playback = await selector.searchIcons({ keyword: '播放', limit: 20 })
-      expect(playback.list.map((item) => item.icon)).not.toContain('arcticons:google-play')
+
+      expect(await search('用户')).toEqual(['system-uicons:user-add', 'mdi:account-alert'])
+      expect(await search('微软')).toEqual(['logos:microsoft-windows'])
+      expect(await search('ie')).toEqual([])
+      expect(await search('文件')).not.toContain('file-icons:npm')
+      expect(await search('文件')).not.toContain('file-icons:adobe')
+      expect(await search('罐头')).not.toContain('mdi:trash-can')
+      expect(await search('烧瓶')).toEqual(['lucide:flask-round', 'logos:flask'])
+      const mouse = await search('鼠标')
+      expect(mouse[0]).toBe('lucide:mouse')
+      expect(mouse).toEqual(expect.arrayContaining(['emojione:mouse', 'twemoji:computer-mouse']))
+      const create = await search('新建')
+      expect(create).toEqual(expect.arrayContaining(['ri:file-add-line', 'ri:file-line']))
+      expect(create.indexOf('ri:file-add-line')).toBeLessThan(create.indexOf('ri:file-line'))
     },
   )
 
-  dbTest(
-    'indexes reviewed aliases, UI terms, technical abbreviations, and flag codes',
-    async ({ db }) => {
-      const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-reviewed-english-'))
-      onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-      const cases = [
-        { prefix: 'ant-design', name: 'bold', query: '粗体' },
-        { prefix: 'mdi', name: 'color', query: '颜色' },
-        { prefix: 'mdi', name: 'to-do', query: '待办' },
-        { prefix: 'mdi', name: 'api', query: '应用程序编程接口' },
-        { prefix: 'mdi', name: 'cpu-32-bit', query: '中央处理器' },
-        { prefix: 'fluent', name: 'color-16-filled', query: '颜色' },
-        { prefix: 'ion', name: 'construct', query: '构建' },
-        { prefix: 'circle-flags', name: 'in', query: '印度' },
-        { prefix: 'cil', name: 'account-logout', query: '账户 登出' },
-        { prefix: 'oi', name: 'account-logout', query: '账户 登出' },
-        {
-          prefix: 'material-symbols',
-          name: 'brand-awareness-outline-rounded',
-          query: '品牌 认知',
-        },
-        { prefix: 'material-symbols-light', name: 'brand-family', query: '品牌 家族' },
-      ]
-      const selectedIds = new Set(cases.map(({ prefix, name }) => `${prefix}:${name}`))
-      const result = await buildIconSearchArtifacts({
-        collections: [
-          {
-            prefix: 'ant-design',
-            collection: 'Ant Design Icons',
-            palette: false,
-            icons: ['bold-outlined'],
-            aliases: { bold: { parent: 'bold-outlined' } },
-          },
-          {
-            prefix: 'mdi',
-            collection: 'Material Design Icons',
-            palette: false,
-            icons: ['api', 'cpu-32-bit', 'format-list-checks', 'palette'],
-            aliases: {
-              color: { parent: 'palette' },
-              'to-do': { parent: 'format-list-checks' },
-            },
-          },
-          {
-            prefix: 'fluent',
-            collection: 'Fluent UI System Icons',
-            palette: false,
-            icons: ['color-16-filled'],
-            aliases: {},
-          },
-          {
-            prefix: 'ion',
-            collection: 'IonIcons',
-            palette: false,
-            icons: ['construct'],
-            aliases: {},
-          },
-          {
-            prefix: 'circle-flags',
-            collection: 'Circle Flags',
-            palette: false,
-            icons: ['in'],
-            aliases: {},
-          },
-          {
-            prefix: 'cil',
-            collection: 'CoreUI Icons',
-            palette: false,
-            icons: ['account-logout'],
-            aliases: {},
-          },
-          {
-            prefix: 'oi',
-            collection: 'Open Iconic',
-            palette: false,
-            icons: ['account-logout'],
-            aliases: {},
-          },
-          {
-            prefix: 'material-symbols',
-            collection: 'Material Symbols',
-            palette: false,
-            icons: ['brand-awareness-outline-rounded'],
-            aliases: {},
-          },
-          {
-            prefix: 'material-symbols-light',
-            collection: 'Material Symbols Light',
-            palette: false,
-            icons: ['brand-family'],
-            aliases: {},
-          },
-        ],
-        iconPackageVersion: 'test',
-        maintained: {
-          ...maintained,
-          translations: maintained.translations.filter(
-            (record) => record.kind === 'icon' && selectedIds.has(record.owner),
-          ),
-        },
-        outputDirectory,
-      })
-      const { documents } = await readIconSearchArtifacts(outputDirectory)
-      await replaceIconSearchDocuments(db, documents, {
-        indexVersion: result.manifest.indexVersion,
-        iconPackageVersion: 'test',
-        searchDataVersion: maintained.dataVersion,
-        rulesVersion: result.manifest.rulesVersion,
-      })
-
-      const selector = createIconSearchService(db)
-      for (const { prefix, name, query } of cases) {
-        const result = await selector.searchIcons({ keyword: query, limit: 20 })
-        expect(result.list.map((item) => item.icon)).toContain(`${prefix}:${name}`)
-      }
-    },
-  )
-
-  dbTest('keeps cellular network and table cell meanings separate', async ({ db }) => {
-    const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-cell-context-'))
-    onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-    const names = ['cell-merge', 'cell-tower']
-    const selectedIds = new Set(names.map((name) => `material-symbols:${name}`))
-    const result = await buildIconSearchArtifacts({
-      collections: [
-        {
-          prefix: 'material-symbols',
-          collection: 'Material Symbols',
-          palette: false,
-          icons: names,
-          aliases: {},
-        },
+  dbTest('searches saved custom Chinese keywords alongside package facts', async ({ db }) => {
+    await replaceIconSearchDocuments(db, facts)
+    const custom = createCustomIconSetService(db)
+    await custom.create({ prefix: 'acme', name: 'Acme', description: null })
+    await custom.uploadIcons('acme', {
+      duplicateStrategy: 'skip',
+      files: [
+        { filename: 'Badge.svg', content: svg, keywords: ['通知', 'finance'] },
+        { filename: 'Seal.svg', content: svg, keywords: ['退出登录'] },
+        { filename: 'Logbook.svg', content: svg, keywords: ['日志通知'] },
       ],
-      iconPackageVersion: 'test',
-      maintained: {
-        ...maintained,
-        translations: maintained.translations.filter(
-          (record) => record.kind === 'icon' && selectedIds.has(record.owner),
-        ),
-      },
-      outputDirectory,
-    })
-    const { documents } = await readIconSearchArtifacts(outputDirectory)
-    await replaceIconSearchDocuments(db, documents, {
-      indexVersion: result.manifest.indexVersion,
-      iconPackageVersion: 'test',
-      searchDataVersion: maintained.dataVersion,
-      rulesVersion: result.manifest.rulesVersion,
     })
 
-    const selector = createIconSearchService(db)
-    await expect(selector.searchIcons({ keyword: '蜂窝网络', limit: 10 })).resolves.toEqual({
-      list: [expect.objectContaining({ icon: 'material-symbols:cell-tower' })],
+    const { authHeaders: headers } = await createSystemAccessFixture(db, {
+      accessCodes: ['content:icon-set:list'],
     })
-    await expect(selector.searchIcons({ keyword: '单元格', limit: 10 })).resolves.toEqual({
-      list: [expect.objectContaining({ icon: 'material-symbols:cell-merge' })],
-    })
-  })
-
-  dbTest(
-    'indexes common object names across the maintained general-purpose sets',
-    async ({ db }) => {
-      const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-general-chinese-'))
-      onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-      const cases = [
-        { prefix: 'lucide', name: 'calendar', query: '日历' },
-        { prefix: 'tabler', name: 'database', query: '数据库' },
-        { prefix: 'mdi', name: 'cart', query: '购物车' },
-        { prefix: 'material-symbols', name: 'folder', query: '文件夹' },
-        { prefix: 'ph', name: 'user', query: '用户' },
-        { prefix: 'solar', name: 'calendar-linear', query: '日历' },
-        { prefix: 'heroicons', name: 'camera', query: '相机' },
-        { prefix: 'carbon', name: 'data-table', query: '数据表' },
-        { prefix: 'fa6-solid', name: 'bug', query: '虫子' },
-        { prefix: 'twemoji', name: 'red-paper-lantern', query: '红灯笼' },
-      ]
-      const selectedIds = new Set(cases.map(({ prefix, name }) => `${prefix}:${name}`))
-
-      const result = await buildIconSearchArtifacts({
-        collections: cases.map(({ prefix, name }) => ({
-          prefix,
-          collection: prefix,
-          palette: false,
-          icons: [name],
-          aliases: {},
-        })),
-        iconPackageVersion: 'test',
-        maintained: {
-          ...maintained,
-          translations: maintained.translations.filter(
-            (record) => record.kind === 'icon' && selectedIds.has(record.owner),
-          ),
-        },
-        outputDirectory,
-      })
-      const { documents } = await readIconSearchArtifacts(outputDirectory)
-      await replaceIconSearchDocuments(db, documents, {
-        indexVersion: result.manifest.indexVersion,
-        iconPackageVersion: 'test',
-        searchDataVersion: maintained.dataVersion,
-        rulesVersion: result.manifest.rulesVersion,
-      })
-
-      const selector = createIconSearchService(db)
-      for (const { prefix, name, query } of cases) {
-        const result = await selector.searchIcons({ keyword: query, limit: 10 })
-        expect(result.list.map((item) => item.icon)).toContain(`${prefix}:${name}`)
+    const app = createApp(db)
+    for (const [keyword, expected] of [
+      ['通知', ['acme:badge']],
+      ['fina', ['acme:badge']],
+      ['登出', ['acme:seal']],
+      ['acme 日志通知', ['acme:logbook']],
+      ['acme 日志通知 qzxmissing', []],
+    ] as const) {
+      const query = encodeURIComponent(keyword)
+      const selector = await app.request(`/api/icons/search?keyword=${query}`, { headers })
+      const library = await app.request(
+        `/api/content/icon-sets/custom/icons?prefix=acme&keyword=${query}`,
+        { headers },
+      )
+      expect(selector.status, keyword).toBe(200)
+      expect(library.status, keyword).toBe(200)
+      const selectorIds = iconSearchResponseSchema
+        .parse(await selector.json())
+        .list.map(({ icon }) => icon)
+      const libraryIds = customIconListResponseSchema
+        .parse(await library.json())
+        .list.map(({ icon }) => icon)
+      expect(libraryIds, keyword).toEqual(expected)
+      expect(
+        selectorIds.filter((id) => id.startsWith('acme:')),
+        keyword,
+      ).toEqual(expected)
+      if (keyword === '通知') {
+        expect(selectorIds).toContain('lucide:bell')
+        expect(selectorIds.indexOf('acme:badge')).toBeLessThan(selectorIds.indexOf('lucide:bell'))
       }
-      await expect(selector.searchIcons({ keyword: '通知', limit: 10 })).resolves.toEqual({
-        list: [],
-      })
-      const errorResults = await selector.searchIcons({ keyword: '错误', limit: 10 })
-      expect(errorResults.list.map((item) => item.icon)).not.toContain('fa6-solid:bug')
-    },
-  )
-
-  dbTest(
-    'serves the same scoped Chinese terms through selector and library search',
-    async ({ db }) => {
-      const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-chinese-'))
-      onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
-      const selectedIds = new Set(['lucide:bell', 'mdi:account', 'mdi:account-alert'])
-      const selectedTranslations = maintained.translations.filter((record) =>
-        record.kind === 'icon' ? selectedIds.has(record.owner) : record.owner.prefix === 'mdi',
-      )
-      const result = await buildIconSearchArtifacts({
-        collections: [
-          {
-            prefix: 'lucide',
-            collection: 'Lucide',
-            palette: false,
-            icons: ['bell'],
-            aliases: {},
-          },
-          {
-            prefix: 'mdi',
-            collection: 'Material Design Icons',
-            palette: false,
-            icons: ['account', 'account-alert', 'account-box'],
-            aliases: {},
-            categories: { 'Account / User': ['account', 'account-alert', 'account-box'] },
-          },
-        ],
-        iconPackageVersion: 'test',
-        maintained: {
-          ...maintained,
-          translations: selectedTranslations,
-        },
-        outputDirectory,
-      })
-      const { documents } = await readIconSearchArtifacts(outputDirectory)
-      await replaceIconSearchDocuments(db, documents, {
-        indexVersion: result.manifest.indexVersion,
-        iconPackageVersion: 'test',
-        searchDataVersion: maintained.dataVersion,
-        rulesVersion: result.manifest.rulesVersion,
-      })
-
-      const selector = createIconSearchService(db)
-      const selectorBell = await selector.searchIcons({ keyword: '铃铛', limit: 10 })
-      const libraryBell = await listBuiltinIcons(
-        { keyword: '铃铛', prefix: 'lucide', cursor: undefined, pageSize: 10 },
-        db,
-      )
-      expect(selectorBell.list.map((item) => item.icon)).toEqual(['lucide:bell'])
-      expect(libraryBell.list.map((item) => item.icon)).toEqual(
-        selectorBell.list.map((item) => item.icon),
-      )
-      await expect(
-        selector.searchIcons({ keyword: 'lucide 铃铛', limit: 10 }),
-      ).resolves.toMatchObject({
-        list: [{ icon: 'lucide:bell' }],
-      })
-      const selectorAccounts = await selector.searchIcons({ keyword: '账户 用户', limit: 10 })
-      expect(selectorAccounts).toMatchObject({
-        list: [{ icon: 'mdi:account' }, { icon: 'mdi:account-alert' }, { icon: 'mdi:account-box' }],
-      })
-      const libraryAccounts = await listBuiltinIcons(
-        { keyword: '账户 用户', prefix: 'mdi', cursor: undefined, pageSize: 10 },
-        db,
-      )
-      expect(libraryAccounts.list.map((item) => item.icon)).toEqual(
-        selectorAccounts.list.map((item) => item.icon),
-      )
-      await expect(searchIconDocuments(db, { keyword: '铃铛', limit: 10 })).resolves.toMatchObject({
-        rows: [{ id: 'lucide:bell', level: 0 }],
-      })
-      await expect(searchIconDocuments(db, { keyword: '账户', limit: 10 })).resolves.toMatchObject({
-        rows: [
-          { id: 'mdi:account', level: 0 },
-          { id: 'mdi:account-alert', level: 1 },
-          { id: 'mdi:account-box', level: 1 },
-        ],
-      })
-      await expect(selector.searchIcons({ keyword: '通知', limit: 10 })).resolves.toEqual({
-        list: [],
-      })
-      await expect(selector.searchIcons({ keyword: 'notification', limit: 10 })).resolves.toEqual({
-        list: [],
-      })
-    },
-  )
+      if (expected.length === 0) expect(selectorIds).toEqual([])
+    }
+  })
 })

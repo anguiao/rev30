@@ -39,6 +39,8 @@ const customIcons = [
   { name: 'diamond', keywords: ['通知'] },
   { name: 'diamond-alt', keywords: ['退出登录'] },
   { name: 'log', keywords: ['out'] },
+  { name: 'lock', keywords: ['lock', 'unlock'] },
+  { name: 'lock-unlocked', keywords: [] },
   { name: 'marks', keywords: ['log', 'out'] },
   { name: 'status', keywords: ['日志通知'] },
   { name: 'inverted', keywords: ['不可见'] },
@@ -444,6 +446,16 @@ void describe('Ambiguity and required conditions', () => {
 })
 
 void describe('Mixed search, custom keywords, and English compatibility', () => {
+  void it('custom keywords add an unlock match while the original lock name still matches', async () => {
+    const locked = await search('锁', { source: 'custom' })
+    assert.deepEqual(rowIds(locked.rows), ['acme:lock'])
+    assert.equal(locked.rows[0]?.tier, 0)
+
+    const unlocked = await search('解锁', { source: 'custom' })
+    assert.equal(requireHit(unlocked.rows, ['acme:lock']).tier, 1)
+    requireHit(unlocked.rows, ['acme:lock-unlocked'])
+  })
+
   void it('lucide 登出 returns identical rankings through both entry points', async () => {
     const keyword = 'lucide 登出'
     const picker = await createIconSearchService(database).searchIcons({

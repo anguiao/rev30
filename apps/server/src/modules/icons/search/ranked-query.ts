@@ -50,7 +50,7 @@ function tsQuery(terms: string): SQL {
   return sql`to_tsquery('simple', ${terms})`
 }
 
-type SearchWeights = 'A' | 'AB' | 'ABC'
+type SearchWeights = 'A' | 'AB' | 'AC' | 'ABC'
 
 function englishOperand(target: string, weights: SearchWeights): string {
   return target.includes('-')
@@ -69,7 +69,7 @@ function englishTargetsMatch(targets: readonly string[], weights: SearchWeights)
 type InferenceGuards = { allowed: SQL; undemoted: SQL }
 
 function inferenceGuards(concept: IconSearchConcept, parent?: InferenceGuards): InferenceGuards {
-  const excluded = englishTargetsMatch(concept.exclude, 'ABC')
+  const excluded = englishTargetsMatch(concept.exclude, 'AC')
   const demoted = concept.demoteCategories.length
     ? sql`category = ANY(${textArray(concept.demoteCategories)})`
     : never

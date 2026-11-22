@@ -4,7 +4,7 @@
 
 `concepts/words.json` 收录基础概念，`concepts/phrases.json` 收录完整短语，`concepts/intent.json` 收录后台用途推荐。
 
-一条记录通过 `zh` 保存简体中文写法和同义词，通过 `en` 保存直接等义的英文词或连字符短语，通过 `intentEn` 保存用途相关目标。每条记录至少提供一个英文目标。使用 `exclude` 排除容易误匹配的名称或词项，使用 `demoteCategories` 调低指定集合类别的英文推断结果。若完整短语也应匹配分开的基础概念，在短语的 `parts` 中声明相应的 `words.json` 键。
+一条记录通过 `zh` 保存简体中文写法和同义词，通过 `en` 保存直接等义的英文词或连字符短语，通过 `intentEn` 保存用途相关目标。每条记录至少提供一个英文目标。`exclude` 中的单个词检查图标名和上游为该图标分配的分类，连字符短语在图标名中连续匹配。用户填写的关键词只提供正向匹配。使用 `demoteCategories` 调低指定集合类别的英文推断结果。若完整短语也应匹配分开的基础概念，在短语的 `parts` 中声明相应的 `words.json` 键。
 
 英文目标也可以通过 `exactNames` 限定为完整原名。例如“粗体”用 `exactNames: ["bold"]` 匹配 `lucide:bold`，用 `en` 中的 `text-b` 匹配 Phosphor 的加粗按钮及其变体。飞机图标名称里的 `-bold` 只表示粗线样式。校验要求 `exactNames` 中的每个名称在锁定图标包里都有对应图标或别名。
 

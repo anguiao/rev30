@@ -215,7 +215,7 @@ apps/server/resources/icon-search/
 - 带连字符的短语（如 `log-out`、`trash-can`、`credit-card`）编译为有序相邻向量 `to_tsquery('simple', 'log:A <-> out:A')`。
 - 中文概念推导的单个英文目标（`en`、`intentEn`）只在图标名、逐图标分类和自定义关键词中精确匹配，如 `file:ABC`。候选与排序使用相同的字段限制。`bell` 与 `bells` 需在词典中分别列出。用户直接输入的英文词按原规则查所有字段，包括图标集名称和 prefix。
 - `exactNames` 通过 `name = ANY(...)` 匹配完整名称，适用于单独查询、组合条件和声明的 `parts`。整名证据计入直接命中的层级和主字段命中数，词项相关度 `ts_rank` 仅由允许词项匹配的英文条件计算。
-- `exclude` 中的英文短语按名称原词序排除。例如“罐头”排除 `trash-can` 时，条件为 `NOT (search_vector @@ to_tsquery('simple', 'trash:A <-> can:A'))`。
+- `exclude` 中的单个英文词在图标原名和上游为该图标分配的分类中匹配（权重 `AC`）。用户填写的关键词（权重 `B`）只提供正向匹配。连字符短语只在图标名中按原词序相邻匹配，例如“罐头”排除 `trash-can` 时使用 `NOT (search_vector @@ to_tsquery('simple', 'trash:A <-> can:A'))`。
 
 ### 5.4 四级互斥分层（Tier 0～3）、排序元组与分页游标
 
@@ -315,6 +315,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
    - `登出 qzxmissing` 返回空列表（不忽略未匹配条件）。
 6. **基础能力与中英混搜回归（约 8～12 条）**：`lucide 登出`、`tabler 文件夹`、`lucide:log-out`、`lucide:trash-2`、`sign` 前缀命中 `signpost`、自定义图标中文关键词匹配、图标选择器与图标库两入口返回一致性、跨多页游标翻页无重复无遗漏。
    - 自定义名称 `badge`、英文关键词 `finance` 应能通过 `fina` 找到。名称与不同关键词之间不能拼接为名称短语。
+   - 自定义图标 `acme:lock` 同时填写 `lock` 和 `unlock` 两个英文关键词时，搜“锁”按原名精确命中，搜“解锁”按关键词命中。对于名为 `acme:lock-unlocked` 的图标，“锁”的排除词 `unlocked` 在原名中生效。
    - 自定义图标填写完整关键词“通知”后，在全部来源搜索“通知”，该图标排在通过用途匹配的 `lucide:bell` 之前。另设英文名与登录无关、仅有关键词“退出登录”的自定义图标，搜“登出”应能通过中文同义词找到。
    - 在 `acme` 集合中给图标填写完整关键词“日志通知”。即使词典将其切为“日志”和“通知”，搜 `acme 日志通知` 也应找到该图标，额外输入一个无法匹配的词后应返回空结果。
 

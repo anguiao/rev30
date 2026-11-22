@@ -1102,5 +1102,48 @@
   { "zh": ["网络缓冲"], "en": ["buffer"] },
   { "zh": ["互联网", "因特网"], "en": ["internet", "web"] },
   { "zh": ["邮箱"], "en": ["mailbox"] },
-  { "zh": ["txt文件"], "en": ["txt", "file-txt", "filetype-txt"] }
+  { "zh": ["txt文件"], "en": ["txt", "file-txt", "filetype-txt"] },
+  { "zh": ["已付款", "付款完成"], "en": ["payment-done"] },
+  {
+    "zh": ["屏幕共享", "共享屏幕"],
+    "en": ["screen-share", "share-screen"],
+    "exclude": ["share-screen-stop", "screen-share-off"]
+  },
+  { "zh": ["快递配送"], "en": ["express-delivery"] },
+  { "zh": ["邮件附件"], "en": ["email-attachment"] },
+  { "zh": ["账户安全", "账号安全"], "en": ["account-security", "security-account"] },
+  { "zh": ["任务异常"], "en": ["task-error"] },
+  { "zh": ["异常告警"], "en": ["alert-error"] },
+  { "zh": ["数据透视"], "en": ["pivot-table"] },
+  { "zh": ["确认订单"], "en": ["order-confirm"] },
+  { "zh": ["创建发票"], "en": ["invoice-add", "add-invoice", "invoice-plus", "invoice-text-plus"] },
+  {
+    "zh": ["添加备注"],
+    "en": ["add-notes", "note-add", "notes-add", "add-document-note"],
+    "exclude": ["music-note", "music-double-note"]
+  },
+  { "zh": ["分享位置"], "en": ["share-location", "location-share"] },
+  { "zh": ["表格导入"], "en": ["table-import"] },
+  { "zh": ["表格导出"], "en": ["table-export"] },
+  { "zh": ["节点连接"], "en": ["node-graph-connection", "node-1-connection"] },
+  { "zh": ["安全设置", "安全配置"], "en": ["safety-settings", "configuration-safety"] },
+  { "zh": ["订单审批"], "en": ["order-approve"] },
+  { "zh": ["审核列表"], "en": ["review-list"] },
+  { "zh": ["私密链接"], "en": ["private-link"] },
+  { "zh": ["附件上传", "上传附件"], "en": ["attachment-upload"] },
+  { "zh": ["评论列表", "评论区"], "en": ["comment-list"] },
+  { "zh": ["关闭提醒", "取消提醒"], "en": ["notification-off"] },
+  { "zh": ["通话静音"], "en": ["call-muted"] },
+  { "zh": ["同步失败"], "en": ["synchronize-error"] },
+  { "zh": ["订单完成"], "en": ["order-done"], "exclude": ["basket-check-in", "basket-check-out"] },
+  { "zh": ["标签分组"], "en": ["tag-group"] },
+  { "zh": ["同步分支"], "en": ["branch-sync"] },
+  { "zh": ["任务分组"], "en": ["task-group"] },
+  { "zh": ["配送失败"], "en": ["delivery-failed"] },
+  {
+    "zh": ["科学实验"],
+    "en": ["science-experiment"],
+    "exclude": ["test-tube-off", "microscope-off", "malaria"]
+  },
+  { "zh": ["审批任务"], "en": ["task-list-approve"] }
 ]

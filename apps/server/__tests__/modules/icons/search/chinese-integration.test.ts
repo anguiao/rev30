@@ -180,6 +180,11 @@ describe('maintained Chinese icon search', () => {
         { filename: 'Badge.svg', content: svg, keywords: ['通知', 'finance'] },
         { filename: 'Seal.svg', content: svg, keywords: ['退出登录'] },
         { filename: 'Logbook.svg', content: svg, keywords: ['日志通知'] },
+        { filename: 'Navigation.svg', content: svg, keywords: ['菜单', '管理'] },
+        { filename: 'Navigation-phrase.svg', content: svg, keywords: ['菜单管理'] },
+        { filename: 'Partial.svg', content: svg, keywords: ['菜单', '后台管理'] },
+        { filename: 'Series.svg', content: svg, keywords: ['Ｋ', '线图'] },
+        { filename: 'K.svg', content: svg, keywords: ['Ｋ 参考', '线图'] },
       ],
     })
 
@@ -193,6 +198,9 @@ describe('maintained Chinese icon search', () => {
       ['登出', ['acme:seal']],
       ['acme 日志通知', ['acme:logbook']],
       ['acme 日志通知 qzxmissing', []],
+      ['菜单　管理', ['acme:navigation-phrase', 'acme:navigation']],
+      ['菜单管理', ['acme:navigation-phrase']],
+      ['Ｋ 线图', ['acme:series']],
     ] as const) {
       const query = encodeURIComponent(keyword)
       const selector = await app.request(`/api/icons/search?keyword=${query}`, { headers })
@@ -219,5 +227,9 @@ describe('maintained Chinese icon search', () => {
       }
       if (expected.length === 0) expect(selectorIds).toEqual([])
     }
+
+    await custom.updateIcon('acme', 'k', { keywords: ['Ｋ', '线图'] })
+    const chart = await createIconSearchService(db).searchIcons({ keyword: 'K 线图', limit: 20 })
+    expect(chart.list.map(({ icon }) => icon)).toContain('acme:k')
   })
 })

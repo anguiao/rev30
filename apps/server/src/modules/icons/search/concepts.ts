@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { compactIconSearchKey, hanCharacterPattern } from './normalization'
 
 // Increment when query parsing or ranking changes, independently of the index rules.
-const queryRulesRevision = 3
+const queryRulesRevision = 4
 const conceptFiles = ['words', 'phrases', 'intent'] as const
 type ConceptFile = (typeof conceptFiles)[number]
 type ConceptSources = Readonly<Record<ConceptFile, unknown>>

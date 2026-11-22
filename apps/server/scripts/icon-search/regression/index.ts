@@ -42,6 +42,8 @@ const customIcons = [
   { name: 'lock', keywords: ['lock', 'unlock'] },
   { name: 'lock-unlocked', keywords: [] },
   { name: 'marks', keywords: ['log', 'out'] },
+  { name: 'marks-full', keywords: ['菜单管理'] },
+  { name: 'marks-split', keywords: ['菜单', '管理'] },
   { name: 'status', keywords: ['日志通知'] },
   { name: 'inverted', keywords: ['不可见'] },
 ]
@@ -203,6 +205,20 @@ void describe('Common admin menus and actions', () => {
 })
 
 void describe('Direct and intended meanings on the first page', () => {
+  void it('matches compound intents without admitting unrelated or opposite actions', async () => {
+    const screens = await completeSearch('共享屏幕', { prefix: 'fluent' })
+    assert.equal(requireHit(screens, ['fluent:share-screen-20-regular']).tier, 1)
+    assert(!screens.some(({ name }) => name.startsWith('share-screen-stop')))
+    requireHit((await search('设置密码', { prefix: 'tabler' })).rows, ['tabler:lock-cog'])
+    requireHit((await search('表格导入', { prefix: 'tabler' })).rows, ['tabler:table-import'])
+
+    const notes = await completeSearch('添加备注', { prefix: 'material-symbols' })
+    requireHit(notes, ['material-symbols:add-notes'])
+    assert(!notes.some(({ name }) => name.includes('music-note')))
+    const departments = await completeSearch('部门 设置', { prefix: 'mdi' })
+    assert(!departments.some(({ name }) => name.startsWith('network-strength')))
+  })
+
   void it('通知 includes a direct notification icon, a bell, and a custom keyword match', async () => {
     const { rows } = await search('通知', { limit: 60 })
     const firstPage = rows.slice(0, firstPageSize)
@@ -446,6 +462,17 @@ void describe('Ambiguity and required conditions', () => {
 })
 
 void describe('Mixed search, custom keywords, and English compatibility', () => {
+  void it('shows every explicitly typed custom keyword alongside whole-concept first-page hits', async () => {
+    const { rows } = await search('菜单 管理')
+    const full = requireHit(rows, ['acme:marks-full'])
+    const split = requireHit(rows, ['acme:marks-split'])
+    requireHit(rows, ['lucide:list-tree'])
+    assertBefore(rows, full, split)
+    assert.deepEqual([full.tier, full.matchScore, split.tier, split.matchScore], [0, 3, 0, 2])
+    const unspaced = await completeSearch('菜单管理', { source: 'custom' })
+    assert.deepEqual(rowIds(unspaced), ['acme:marks-full'])
+  })
+
   void it('custom keywords add an unlock match while the original lock name still matches', async () => {
     const locked = await search('锁', { source: 'custom' })
     assert.deepEqual(rowIds(locked.rows), ['acme:lock'])

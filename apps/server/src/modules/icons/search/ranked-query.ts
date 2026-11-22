@@ -1,5 +1,6 @@
 import { and, not, or, sql, type SQL } from 'drizzle-orm'
 import type { IconSearchConcept } from './concepts'
+import { hanCharacterPattern } from './normalization'
 import type {
   ChineseIconSearchQuery,
   IconSearchQueryFragment,
@@ -44,6 +45,27 @@ function overlaps(column: SQL, keys: readonly string[]): SQL {
 
 function namesMatch(names: readonly string[]): SQL {
   return names.length ? sql`name = ANY(${textArray(names)})` : never
+}
+
+function customKeywordPartsMatch(phrase: string): SQL {
+  if (!phrase.includes(' ')) return never
+  const parts = [...new Set(phrase.split(' '))]
+  const matches = sql`source = 'custom' AND exact_keys @> ${textArray(parts)}`
+  const possibleNames = parts.filter((part) => !hanCharacterPattern.test(part))
+  if (!possibleNames.length) return matches
+
+  // exact_keys also contains the icon name. Require a saved keyword if a part equals that name.
+  return all([
+    matches,
+    any([
+      not(namesMatch(possibleNames)),
+      sql`EXISTS (
+        SELECT 1 FROM custom_icon_set_icons AS icon, unnest(icon.keywords) AS entry(keyword)
+        WHERE icon.id = icon_search_documents.custom_icon_id
+          AND btrim(lower(normalize(entry.keyword, NFKC) COLLATE "C")) = icon.name
+      )`,
+    ]),
+  ])
 }
 
 function tsQuery(terms: string): SQL {
@@ -178,6 +200,7 @@ function fragmentEvidence(fragment: IconSearchQueryFragment) {
 
 function exactChineseEvidence(plan: ChineseIconSearchQuery) {
   const literal = overlaps(sql`exact_keys`, [...new Set([plan.phrase, plan.compactKey])])
+  const customParts = customKeywordPartsMatch(plan.phrase)
   const concept = plan.exactConcept
   const undemoted = concept ? inferenceGuards(concept).undemoted : always
   const direct = any([
@@ -185,11 +208,15 @@ function exactChineseEvidence(plan: ChineseIconSearchQuery) {
     namesMatch(plan.exactNames),
     all([undemoted, namesMatch(concept ? [...concept.en, ...concept.exactNames] : [])]),
   ])
-  const condition = any([direct, all([undemoted, namesMatch(concept?.intentEn ?? [])])])
+  const condition = any([
+    direct,
+    customParts,
+    all([undemoted, namesMatch(concept?.intentEn ?? [])]),
+  ])
   const preferred = sql`prefix = ANY(${textArray(preferredIconPrefixes)})`
   const matchScore = sql`CASE
     WHEN (source = 'custom' AND ${literal}) OR (${preferred} AND ${direct}) THEN 3
-    WHEN ${preferred} THEN 2
+    WHEN ${any([preferred, customParts])} THEN 2
     WHEN ${direct} THEN 1
     ELSE 0
   END`

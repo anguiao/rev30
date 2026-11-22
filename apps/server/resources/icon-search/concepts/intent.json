@@ -103,7 +103,7 @@
   { "zh": ["关注"], "intentEn": ["star", "user-plus"] },
   { "zh": ["收藏"], "intentEn": ["star", "heart", "bookmark"] },
   { "zh": ["居中"], "intentEn": ["align-center"] },
-  { "zh": ["设置密码"], "intentEn": ["lock-keyhole", "key-round"] },
+  { "zh": ["设置密码"], "intentEn": ["lock-keyhole", "key-round", "lock-cog", "cog-lock"] },
   { "zh": ["重置密码", "密码重置"], "intentEn": ["rotate-ccw", "lock-reset"] },
   { "zh": ["排队"], "intentEn": ["list-ordered", "users-round"] },
   { "zh": ["数据字典"], "intentEn": ["book-a", "dictionary", "book-open"] },
@@ -128,7 +128,8 @@
       "clock",
       "alarm-clock",
       "clock-check",
-      "cron"
+      "cron",
+      "calendar-todo"
     ]
   },
   { "zh": ["任务"], "intentEn": ["task-list", "clipboard-check", "list-checks"] },
@@ -226,7 +227,7 @@
   { "zh": ["测试"], "intentEn": ["test-tube", "flask-conical"] },
   { "zh": ["部署"], "intentEn": ["rocket", "cloud-upload", "server"] },
   { "zh": ["启动"], "intentEn": ["play", "power"] },
-  { "zh": ["屏幕共享", "共享屏幕"], "intentEn": ["screen-share", "monitor-up", "presentation"] },
+  { "zh": ["屏幕共享", "共享屏幕"], "intentEn": ["monitor-up", "presentation"] },
   { "zh": ["停止共享屏幕"], "intentEn": ["screen-share-off", "monitor-off"] },
   { "zh": ["源代码", "源码"], "intentEn": ["code", "file-code"] },
   { "zh": ["电路板"], "intentEn": ["circuit-board", "cpu"] },
@@ -262,7 +263,7 @@
   { "zh": ["图像识别", "识图"], "intentEn": ["scan-eye", "scan", "image-search"] },
   { "zh": ["精确匹配", "精准匹配"], "intentEn": ["target", "crosshair", "scan-text"] },
   { "zh": ["查找替换"], "intentEn": ["replace", "replace-all", "find-replace"] },
-  { "zh": ["快递配送"], "intentEn": ["truck", "truck-delivery", "package"] },
+  { "zh": ["快递配送"], "intentEn": ["truck", "truck-delivery", "package", "delivery-parcel"] },
   { "zh": ["地图图表"], "intentEn": ["map", "chart-area"] },
   { "zh": ["用户偏好"], "intentEn": ["sliders-horizontal", "user-cog", "settings"] },
   { "zh": ["打开设备"], "intentEn": ["power"] },
@@ -298,7 +299,10 @@
   { "zh": ["访问限制"], "intentEn": ["shield-lock", "lock-keyhole"] },
   { "zh": ["状态管理"], "intentEn": ["activity", "settings", "sliders", "status"] },
   { "zh": ["状态切换"], "intentEn": ["toggle-left", "toggle-right", "toggle", "switch"] },
-  { "zh": ["应用设置"], "intentEn": ["settings", "cog", "sliders-horizontal"] },
+  {
+    "zh": ["应用设置"],
+    "intentEn": ["settings", "cog", "sliders-horizontal", "coding-apps-websites-setting-computer"]
+  },
   { "zh": ["配置中心"], "intentEn": ["settings", "cog", "sliders-horizontal"] },
   { "zh": ["个人设置"], "intentEn": ["user-cog", "user-round-cog"] },
   { "zh": ["权限审核"], "intentEn": ["shield-check", "clipboard-check"] },
@@ -307,7 +311,10 @@
   { "zh": ["资料编辑"], "intentEn": ["user-round-pen", "square-pen"] },
   { "zh": ["字段管理"], "intentEn": ["list-tree", "list-checks", "table-properties"] },
   { "zh": ["菜单项", "菜单项设置"], "intentEn": ["list-tree", "list-details"] },
-  { "zh": ["账户安全", "账号安全"], "intentEn": ["user-round-check", "shield-check", "user-lock"] },
+  {
+    "zh": ["账户安全", "账号安全"],
+    "intentEn": ["user-round-check", "shield-check", "user-lock", "shield-account"]
+  },
   { "zh": ["工作日历"], "intentEn": ["calendar-days", "calendar-check"] },
   { "zh": ["会话管理"], "intentEn": ["messages-square", "app-window"] },
   { "zh": ["数据源"], "intentEn": ["database", "database-zap", "network"] },
@@ -356,7 +363,7 @@
   { "zh": ["内容编辑"], "intentEn": ["square-pen", "file-pen-line"] },
   { "zh": ["数据资产"], "intentEn": ["database", "boxes"] },
   { "zh": ["在线咨询"], "intentEn": ["messages-square", "headset"] },
-  { "zh": ["分享链接"], "intentEn": ["share-2", "link"] },
+  { "zh": ["分享链接"], "intentEn": ["share-2", "link", "share-one"] },
   { "zh": ["离开", "暂离"], "intentEn": ["door-open", "clock"] },
   { "zh": ["集中管理"], "intentEn": ["layout-dashboard", "settings"] },
   { "zh": ["内容分类"], "intentEn": ["folder-tree", "tags", "list-tree"] },
@@ -382,7 +389,10 @@
   { "zh": ["费用明细"], "intentEn": ["receipt", "receipt-text", "list-details"] },
   { "zh": ["确认订单"], "intentEn": ["clipboard-check", "receipt", "check-circle"] },
   { "zh": ["发票管理"], "intentEn": ["receipt", "file-text"] },
-  { "zh": ["创建发票"], "intentEn": ["receipt-text", "file-plus"] },
+  {
+    "zh": ["创建发票"],
+    "intentEn": ["receipt-text", "file-plus", "receipt-add", "printer-receipt-plus"]
+  },
   { "zh": ["批量复制"], "intentEn": ["files", "copy-plus", "copy"] },
   { "zh": ["记录筛选"], "intentEn": ["list-filter", "funnel"] },
   { "zh": ["聚合"], "intentEn": ["layers", "boxes", "network"] },
@@ -396,13 +406,16 @@
   { "zh": ["轻量版"], "intentEn": ["feather", "zap"] },
   { "zh": ["排障"], "intentEn": ["triangle-alert", "wrench", "stethoscope"] },
   { "zh": ["短链接"], "intentEn": ["link-2", "link"] },
-  { "zh": ["添加备注"], "intentEn": ["sticky-note", "file-plus"] },
+  { "zh": ["添加备注"], "intentEn": ["sticky-note", "file-plus", "note-stack-add"] },
   { "zh": ["查看备注"], "intentEn": ["sticky-note", "file-text"] },
   { "zh": ["闪电充电"], "intentEn": ["battery-charging", "zap"] },
   { "zh": ["全新"], "intentEn": ["star", "sparkles"] },
   { "zh": ["城市交通"], "intentEn": ["bus", "traffic-light", "train"] },
   { "zh": ["财务审计"], "intentEn": ["clipboard-check", "receipt-text", "calculator"] },
-  { "zh": ["数据刷新"], "intentEn": ["database-refresh", "refresh-cw"] },
+  {
+    "zh": ["数据刷新"],
+    "intentEn": ["database-refresh", "refresh-cw", "full-refresh", "data-transfer-edi-reload"]
+  },
   { "zh": ["指标", "指标监控"], "intentEn": ["gauge", "activity", "chart-line"] },
   { "zh": ["调度中心"], "intentEn": ["calendar-clock", "workflow", "timer"] },
   { "zh": ["流程审批"], "intentEn": ["workflow", "clipboard-check"] },
@@ -461,8 +474,11 @@
     "intentEn": ["account-supervisor", "supervisor-account", "user-admin"]
   },
   { "zh": ["权限管理", "权限设置"], "intentEn": ["manage-accounts", "user-lock"] },
-  { "zh": ["安全设置", "安全配置"], "intentEn": ["shield-cog"] },
-  { "zh": ["密码管理", "密码设置"], "intentEn": ["password", "key-square"] },
+  { "zh": ["安全设置", "安全配置"], "intentEn": ["shield-cog", "shield-settings"] },
+  {
+    "zh": ["密码管理", "密码设置"],
+    "intentEn": ["password", "key-square", "lock-cog", "cog-lock"]
+  },
   { "zh": ["系统设置"], "intentEn": ["system-settings", "settings", "gear"] },
   { "zh": ["通知开关"], "intentEn": ["notification-settings", "bell-cog"] },
   { "zh": ["报表下载"], "intentEn": ["file-download"] },
@@ -520,7 +536,10 @@
   { "zh": ["合同管理", "合同档案"], "intentEn": ["file-signature", "folder-cog", "file-check"] },
   { "zh": ["合同到期"], "intentEn": ["file-clock", "calendar-x"] },
   { "zh": ["调岗"], "intentEn": ["user-switch", "switch-account"] },
-  { "zh": ["业务分析"], "intentEn": ["chart-line", "chart-bar"] },
+  {
+    "zh": ["业务分析"],
+    "intentEn": ["chart-line", "chart-bar", "analytics-graph", "analytics-board"]
+  },
   { "zh": ["收款订单"], "intentEn": ["receipt", "banknote"] },
   { "zh": ["购物清单", "采购清单"], "intentEn": ["shopping-list", "clipboard-list"] },
   { "zh": ["审核列表"], "intentEn": ["clipboard-list", "list-checks"] },
@@ -549,7 +568,18 @@
   { "zh": ["合作伙伴"], "intentEn": ["handshake"] },
   { "zh": ["访问受限", "禁止访问"], "intentEn": ["lock", "shield-lock"] },
   { "zh": ["安全验证", "安全校验"], "intentEn": ["shield-check"] },
-  { "zh": ["修改密码", "更改密码"], "intentEn": ["lock-reset", "pencil-line", "key-round"] },
+  {
+    "zh": ["修改密码", "更改密码"],
+    "intentEn": [
+      "lock-reset",
+      "pencil-line",
+      "key-round",
+      "password-pencil",
+      "edit-lock",
+      "pencil-lock",
+      "pen-lock"
+    ]
+  },
   { "zh": ["密码隐藏", "隐藏密码"], "intentEn": ["eye-off", "visibility-off"] },
   { "zh": ["密码显示", "显示密码"], "intentEn": ["visibility", "eye"] },
   { "zh": ["两步验证", "双重认证", "双因素认证"], "intentEn": ["security-key"] },
@@ -622,7 +652,7 @@
   { "zh": ["关闭文件", "关闭文档"], "intentEn": ["file-x"] },
   { "zh": ["移动文件"], "intentEn": ["file-input", "file-output"] },
   { "zh": ["重命名文件"], "intentEn": ["rename", "file-edit", "file-pen-line"] },
-  { "zh": ["文件备份"], "intentEn": ["file-clock", "archive"] },
+  { "zh": ["文件备份"], "intentEn": ["file-clock", "archive", "file-history"] },
   { "zh": ["文件共享", "共享文件"], "intentEn": ["file-symlink"] },
   { "zh": ["文件签署", "文件签名"], "intentEn": ["file-certificate"] },
   { "zh": ["文件损坏"], "intentEn": ["file-error", "file-warning"] },
@@ -672,13 +702,23 @@
   { "zh": ["新消息"], "intentEn": ["message-plus", "message-badge", "chat-unread"] },
   { "zh": ["发送消息", "发消息"], "intentEn": ["send"] },
   { "zh": ["评论列表", "评论区"], "intentEn": ["comments", "messages", "comment-discussion"] },
-  { "zh": ["对话列表", "聊天列表"], "intentEn": ["messages-square", "messages"] },
+  {
+    "zh": ["对话列表", "聊天列表"],
+    "intentEn": ["messages-square", "messages", "chat-bubble-list", "chat-circle-list"]
+  },
   { "zh": ["通知已读"], "intentEn": ["bell-check"] },
   { "zh": ["免打扰", "勿扰模式"], "intentEn": ["bell-off", "bell-slash"] },
   { "zh": ["开启通知", "通知开启"], "intentEn": ["bell-ring", "bell-ringing"] },
   { "zh": ["启用提醒", "响铃提醒"], "intentEn": ["bell-ring", "alarm-on"] },
-  { "zh": ["关闭提醒", "取消提醒"], "intentEn": ["bell-off", "alarm-off"] },
-  { "zh": ["消息提醒"], "intentEn": ["bell-ring", "notification"] },
+  {
+    "zh": ["关闭提醒", "取消提醒"],
+    "intentEn": ["bell-off", "alarm-off", "alarm-clock-cancelled"]
+  },
+  {
+    "zh": ["消息提醒"],
+    "intentEn": ["bell-ring", "notification", "chat-unread"],
+    "exclude": ["mark-chat-unread"]
+  },
   { "zh": ["已收藏"], "intentEn": ["star-filled"] },
   { "zh": ["未收藏"], "intentEn": ["star-outline", "bookmark-outline", "favorite-border"] },
   { "zh": ["关注用户"], "intentEn": ["user-plus", "account-plus"] },
@@ -738,7 +778,7 @@
   { "zh": ["剩余时间"], "intentEn": ["timer-clock", "clock-countdown"] },
   { "zh": ["倒计时结束"], "intentEn": ["timer-off", "timer-stop"] },
   { "zh": ["日程安排", "排期", "日程"], "intentEn": ["calendar-days", "calendar-clock"] },
-  { "zh": ["预约日期"], "intentEn": ["calendar-check", "calendar-event"] },
+  { "zh": ["预约日期"], "intentEn": ["calendar-check", "calendar-event", "calendar-schedule"] },
   { "zh": ["取消日程"], "intentEn": ["calendar-minus", "calendar-x"] },
   { "zh": ["日历提醒"], "intentEn": ["calendar-alert", "calendar-clock"] },
   { "zh": ["截止日期", "到期时间"], "intentEn": ["calendar-clock", "calendar-alert"] },
@@ -761,7 +801,11 @@
   { "zh": ["医疗记录", "病历"], "intentEn": ["clipboard-heart"] },
   { "zh": ["电子病历", "电子健康档案"], "intentEn": ["file-heart", "file-medical"] },
   { "zh": ["心电图", "心电监护"], "intentEn": ["activity", "heart-pulse"] },
-  { "zh": ["化学实验"], "intentEn": ["chemistry", "flask-conical"] },
+  {
+    "zh": ["化学实验"],
+    "intentEn": ["chemistry", "flask-conical", "test-tube", "alembic"],
+    "exclude": ["test-tube-off"]
+  },
   { "zh": ["紧急出口", "安全出口"], "intentEn": ["exit"] },
   { "zh": ["网络设备"], "intentEn": ["network-switch", "router"] },
   { "zh": ["网络连接"], "intentEn": ["internet", "network", "connection"] },
@@ -789,7 +833,17 @@
     "zh": ["退货", "退件"],
     "intentEn": ["package-variant-closed-remove", "package-x", "package-variant-closed-minus"]
   },
-  { "zh": ["订单完成"], "intentEn": ["clipboard-check", "check-circle"] },
+  {
+    "zh": ["订单完成"],
+    "intentEn": [
+      "clipboard-check",
+      "check-circle",
+      "basket-check",
+      "shopping-basket-done",
+      "receipt-check",
+      "receipt-text-check"
+    ]
+  },
   { "zh": ["取消订单"], "intentEn": ["shopping-cart-x", "cart-remove"] },
   { "zh": ["退款申请", "请求退款"], "intentEn": ["cash-refund", "refund"] },
   { "zh": ["空箱", "空包裹"], "intentEn": ["package-open", "box-open", "box"] },
@@ -943,7 +997,10 @@
   { "zh": ["演讲"], "intentEn": ["presentation", "podium", "mic"] },
   { "zh": ["摇滚"], "intentEn": ["electric-guitar", "guitar"] },
   { "zh": ["盘片弹出"], "intentEn": ["eject"] },
-  { "zh": ["科学实验"], "intentEn": ["flask-conical", "beaker"] },
+  {
+    "zh": ["科学实验"],
+    "intentEn": ["flask-conical", "beaker", "test-tube", "lab-tube-experiment", "microscope"]
+  },
   { "zh": ["日程管理"], "intentEn": ["calendar-clock", "calendar-cog"] },
   { "zh": ["值班", "值班表"], "intentEn": ["calendar-time", "list-todo", "clock"] },
   { "zh": ["举重"], "intentEn": ["dumbbell"] },
@@ -958,7 +1015,7 @@
   { "zh": ["卫星通信"], "intentEn": ["satellite-dish", "satellite"] },
   { "zh": ["风力监测"], "intentEn": ["wind", "wind-sock"] },
   { "zh": ["txt文件"], "intentEn": ["file-text", "text-file"] },
-  { "zh": ["审批任务"], "intentEn": ["clipboard-check", "badge-check"] },
+  { "zh": ["审批任务"], "intentEn": ["clipboard-check", "badge-check", "task-approved"] },
   { "zh": ["只读文件"], "intentEn": ["file-lock", "file-lock-2"] },
   { "zh": ["加密文件"], "intentEn": ["file-shield", "file-lock"] },
   { "zh": ["交易成功"], "intentEn": ["credit-card-check", "wallet-check"] },

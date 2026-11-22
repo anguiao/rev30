@@ -153,7 +153,7 @@
   { "zh": ["处理中状态", "处理中"], "intentEn": ["loader-circle", "clock", "rotate"] },
   { "zh": ["等待中", "待处理", "等待"], "intentEn": ["hourglass", "clock"] },
   { "zh": ["未知"], "intentEn": ["circle-help", "question-mark"] },
-  { "zh": ["过期"], "intentEn": ["calendar-x", "clock-alert", "timer-off"] },
+  { "zh": ["过期", "已过期"], "intentEn": ["calendar-x", "clock-alert", "timer-off", "file-x"] },
   { "zh": ["有效"], "intentEn": ["badge-check", "check", "shield-check"] },
   { "zh": ["无效"], "intentEn": ["circle-x", "x-mark", "shield-x"] },
   { "zh": ["空状态"], "intentEn": ["inbox", "package-open", "file-x"] },
@@ -206,7 +206,14 @@
   { "zh": ["公益"], "intentEn": ["heart-handshake", "hand-heart"] },
   { "zh": ["公益捐赠", "捐款", "捐赠"], "intentEn": ["hand-heart", "hand-coins", "heart", "gift"] },
   { "zh": ["回收"], "intentEn": ["trash-2"] },
-  { "zh": ["内容发布", "发布内容"], "intentEn": ["send", "paper-plane", "cloud-upload"] },
+  {
+    "zh": ["发布", "内容发布", "发布内容", "发稿"],
+    "intentEn": ["send", "paper-plane", "paper-airplane", "broadcast", "radio-tower", "file-output"]
+  },
+  {
+    "zh": ["内容举报", "举报内容"],
+    "intentEn": ["flag", "message-report", "message-square-warning", "file-warning"]
+  },
   { "zh": ["协同编辑", "协作写作"], "intentEn": ["users-round", "share", "square-pen"] },
   { "zh": ["评论", "留言"], "intentEn": ["message-square", "message-circle"] },
   { "zh": ["会话"], "intentEn": ["messages-square", "chat"] },
@@ -383,7 +390,7 @@
   { "zh": ["从头开始"], "intentEn": ["rotate-ccw", "flag"] },
   { "zh": ["确认提交"], "intentEn": ["file-check", "circle-check", "clipboard-check"] },
   { "zh": ["分栏导航"], "intentEn": ["panel-left", "layout-columns"] },
-  { "zh": ["快速入口"], "intentEn": ["zap", "external-link", "corner-up-right"] },
+  { "zh": ["快速入口", "快捷入口"], "intentEn": ["zap", "external-link", "arrow-up-right"] },
   { "zh": ["快速搜索"], "intentEn": ["search", "zap"] },
   { "zh": ["轻量版"], "intentEn": ["feather", "zap"] },
   { "zh": ["排障"], "intentEn": ["triangle-alert", "wrench", "stethoscope"] },
@@ -400,7 +407,7 @@
   { "zh": ["流程审批"], "intentEn": ["workflow", "clipboard-check"] },
   { "zh": ["服务迁移"], "intentEn": ["database-export", "cloud-upload"] },
   { "zh": ["高可用性"], "intentEn": ["layers", "server-check", "activity"] },
-  { "zh": ["正在维护"], "intentEn": ["wrench", "construction"] },
+  { "zh": ["正在维护", "维护中", "维修中"], "intentEn": ["wrench", "construction", "hard-hat"] },
   { "zh": ["审计结果"], "intentEn": ["file-check", "clipboard-check"] },
   { "zh": ["问答", "常见问题"], "intentEn": ["messages-square", "circle-help"] },
   { "zh": ["表格计算"], "intentEn": ["table", "calculator"] },
@@ -476,13 +483,24 @@
   { "zh": ["表单验证"], "intentEn": ["form-validation", "list-check"] },
   { "zh": ["提交表单"], "intentEn": ["send", "clipboard-check"] },
   { "zh": ["表单填写"], "intentEn": ["form-fill", "form-input", "clipboard-pen"] },
-  { "zh": ["系统维护", "维修中"], "intentEn": ["maintenance", "wrench"] },
+  {
+    "zh": ["必填", "必填项", "必填字段"],
+    "intentEn": ["asterisk", "asterisk-circle", "text-asterisk"]
+  },
+  {
+    "zh": ["主题", "界面主题", "皮肤"],
+    "intentEn": ["palette", "paintbrush", "paint-roller", "sun-moon", "theme-light-dark"]
+  },
+  { "zh": ["系统维护"], "intentEn": ["maintenance", "wrench"] },
   { "zh": ["云端连接", "联网云端"], "intentEn": ["cloud-check", "cloud-link"] },
   { "zh": ["容器集群"], "intentEn": ["cluster", "docker", "kubernetes"] },
   { "zh": ["集群管理"], "intentEn": ["cluster", "network", "node"] },
   { "zh": ["服务器更新"], "intentEn": ["server-cog"] },
   { "zh": ["服务器状态"], "intentEn": ["server-check", "server-alert"] },
-  { "zh": ["数据脱敏"], "intentEn": ["eye-off"] },
+  {
+    "zh": ["数据脱敏", "数据遮蔽"],
+    "intentEn": ["asterisk", "password", "form-textbox-password", "textbox-password", "redact"]
+  },
   { "zh": ["隐私数据"], "intentEn": ["user-lock", "file-lock"] },
   { "zh": ["双人审批"], "intentEn": ["approval", "user-check", "users"] },
   {
@@ -608,6 +626,7 @@
   { "zh": ["文件签署", "文件签名"], "intentEn": ["file-certificate"] },
   { "zh": ["文件损坏"], "intentEn": ["file-error", "file-warning"] },
   { "zh": ["空白文件", "空文件"], "intentEn": ["file"] },
+  { "zh": ["压缩文件", "压缩包"], "intentEn": ["file-archive"] },
   { "zh": ["文档模板"], "intentEn": ["template"] },
   { "zh": ["批处理文件"], "intentEn": ["batch", "file-code"] },
   { "zh": ["可执行文件", "程序文件"], "intentEn": ["executable"] },
@@ -890,6 +909,10 @@
   { "zh": ["数据分类"], "intentEn": ["category", "tags", "filter"] },
   { "zh": ["分类管理"], "intentEn": ["tags", "list-tree", "layout-grid"] },
   { "zh": ["折扣标签"], "intentEn": ["discount", "price-tag"] },
+  {
+    "zh": ["优惠活动", "促销活动"],
+    "intentEn": ["discount", "percent", "ticket-percent", "badge-percent", "coupon"]
+  },
   { "zh": ["产品目录", "商品目录"], "intentEn": ["catalog", "category"] },
   { "zh": ["运营报告"], "intentEn": ["chart-column", "file-chart-column"] },
   { "zh": ["关键词搜索"], "intentEn": ["search", "keyword"] },

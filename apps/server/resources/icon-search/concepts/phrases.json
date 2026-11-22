@@ -301,7 +301,10 @@
   { "zh": ["音频文件"], "en": ["file-audio", "audio-file", "file-music"] },
   { "zh": ["图片文件", "图像文件"], "en": ["file-image", "image-file", "file-picture"] },
   { "zh": ["空白文件", "空文件"], "en": ["file-blank", "file-empty", "empty-file"] },
-  { "zh": ["压缩文件"], "en": ["file-archive", "file-zip", "zip-file", "folder-zip"] },
+  {
+    "zh": ["压缩文件", "压缩包"],
+    "en": ["file-zip", "zip-file", "file-zipper", "folder-zip", "zip-box"]
+  },
   { "zh": ["演示文稿", "幻灯片"], "en": ["presentation", "slideshow", "powerpoint", "slide"] },
   { "zh": ["文本文档"], "en": ["text-document", "file-text", "document-text"] },
   { "zh": ["文档模板"], "en": ["file-template"] },
@@ -843,6 +846,7 @@
   { "zh": ["取消选择", "取消全选"], "en": ["deselect", "select-off"] },
   { "zh": ["多重选择", "多项选择"], "en": ["input-checked"] },
   { "zh": ["文本输入"], "en": ["input-text", "text-input"] },
+  { "zh": ["必填", "必填项", "必填字段"], "en": ["required", "field-required"] },
   { "zh": ["添加标签"], "en": ["tag-plus", "tag-add"] },
   { "zh": ["移除标签", "删除标签"], "en": ["tag-off", "tag-minus", "tag-remove"] },
   { "zh": ["电脑鼠标", "鼠标设备"], "en": ["computer-mouse"], "demoteCategories": ["emoji"] },
@@ -1039,6 +1043,7 @@
   { "zh": ["报价单"], "en": ["quotation"] },
   { "zh": ["包裹追踪", "物流查询"], "en": ["package-search"] },
   { "zh": ["折扣标签"], "en": ["tag-percent"] },
+  { "zh": ["优惠活动", "促销活动"], "en": ["promotion", "sale"] },
   { "zh": ["产品目录", "商品目录"], "en": ["product-catalog"] },
   { "zh": ["券码验证"], "en": ["ticket-check"] },
   { "zh": ["编辑资料"], "en": ["user-pen", "user-round-pen"] },

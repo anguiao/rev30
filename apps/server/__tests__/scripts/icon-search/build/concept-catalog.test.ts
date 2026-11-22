@@ -60,4 +60,28 @@ describe('maintained icon search concepts', () => {
       intentEn: expect.arrayContaining(['humidity']),
     })
   })
+
+  it('recognizes status and navigation wording through shared concepts', async () => {
+    const { byKey } = await loadIconSearchConcepts(directory)
+
+    expect(byKey.get('已过期')).toEqual(byKey.get('过期'))
+    expect(byKey.get('已过期')?.intentEn).toContain('calendar-x')
+    expect(byKey.get('维护中')).toEqual(byKey.get('正在维护'))
+    expect(byKey.get('维护中')?.intentEn).toContain('wrench')
+    expect(byKey.get('快捷入口')).toEqual(byKey.get('快速入口'))
+    expect(byKey.get('快捷入口')?.intentEn).toContain('zap')
+  })
+
+  it('separates compression from archiving and keeps action pictograms as intent', async () => {
+    const { byKey } = await loadIconSearchConcepts(directory)
+
+    expect(byKey.get('压缩包')).toEqual(byKey.get('压缩文件'))
+    expect(byKey.get('压缩包')?.en).toContain('file-zip')
+    expect(byKey.get('压缩包')?.en).not.toContain('archive')
+    expect(byKey.get('归档包')?.en).toContain('archive')
+    expect(byKey.get('发布')?.en).toContain('publish')
+    expect(byKey.get('发布')?.en).not.toContain('send')
+    expect(byKey.get('发布')?.intentEn).toContain('send')
+    expect(byKey.get('数据脱敏')?.intentEn).toContain('asterisk')
+  })
 })

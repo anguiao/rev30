@@ -30,6 +30,7 @@ import {
   type TiptapDocument,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
+import type { IconSearchCategory } from '../modules/icons/search/concepts'
 
 const timestampOptions = { withTimezone: true } as const
 const tsvector = customType<{ data: string }>({
@@ -849,6 +850,8 @@ export const customIconSetIcons = pgTable(
   ],
 )
 
+const iconSearchCategories = sql`('ui', 'brand', 'programming', 'emoji', 'flag', 'other', 'custom')`
+
 function iconSearchDocumentColumns() {
   return {
     id: text('id').primaryKey(),
@@ -859,25 +862,16 @@ function iconSearchDocumentColumns() {
     palette: boolean('palette').notNull(),
     preference: integer('preference').notNull().default(0),
     customIconId: uuid('custom_icon_id'),
-    exactPhrases: text('exact_phrases').array().notNull(),
-    fullTokens: text('full_tokens').array().notNull(),
-    fullExpressions: text('full_expressions')
-      .array()
-      .notNull()
-      .default(sql`'{}'::text[]`),
-    primaryExpressions: text('primary_expressions')
-      .array()
-      .notNull()
-      .default(sql`'{}'::text[]`),
-    exactExpressions: text('exact_expressions')
-      .array()
-      .notNull()
-      .default(sql`'{}'::text[]`),
+    category: text('category').$type<IconSearchCategory>().notNull(),
+    exactKeys: text('exact_keys').array().notNull(),
+    tokens: text('tokens').array().notNull(),
     primaryTokens: text('primary_tokens')
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    relatedTokens: text('related_tokens').array().notNull(),
     searchVector: tsvector('search_vector').notNull(),
+    englishRankVector: tsvector('english_rank_vector').notNull(),
   }
 }
 
@@ -885,15 +879,21 @@ export const iconSearchDocuments = pgTable(
   'icon_search_documents',
   iconSearchDocumentColumns(),
   (table) => [
-    index('icon_search_documents_full_tokens_gin').using('gin', table.fullTokens),
-    index('icon_search_documents_full_expressions_gin').using('gin', table.fullExpressions),
-    index('icon_search_documents_exact_phrases_gin').using('gin', table.exactPhrases),
+    index('icon_search_documents_exact_keys_gin').using('gin', table.exactKeys),
+    index('icon_search_documents_tokens_gin').using('gin', table.tokens),
+    index('icon_search_documents_primary_tokens_gin').using('gin', table.primaryTokens),
+    index('icon_search_documents_related_tokens_gin').using('gin', table.relatedTokens),
     index('icon_search_documents_search_vector_gin').using('gin', table.searchVector),
+    index('icon_search_documents_name_idx').on(table.name),
     index('icon_search_documents_source_prefix_id_idx').on(table.source, table.prefix, table.id),
     uniqueIndex('icon_search_documents_custom_icon_id_unique')
       .on(table.customIconId)
       .where(sql`${table.customIconId} IS NOT NULL`),
     check('icon_search_documents_source_check', sql`${table.source} IN ('builtin', 'custom')`),
+    check(
+      'icon_search_documents_category_check',
+      sql`${table.category} IN ${iconSearchCategories}`,
+    ),
     check(
       'icon_search_documents_custom_id_check',
       sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
@@ -905,10 +905,12 @@ export const iconSearchDocumentsStaging = pgTable(
   'icon_search_documents_staging',
   iconSearchDocumentColumns(),
   (table) => [
-    index('icon_search_documents_staging_full_tokens_gin').using('gin', table.fullTokens),
-    index('icon_search_documents_staging_full_expressions_gin').using('gin', table.fullExpressions),
-    index('icon_search_documents_staging_exact_phrases_gin').using('gin', table.exactPhrases),
+    index('icon_search_documents_staging_exact_keys_gin').using('gin', table.exactKeys),
+    index('icon_search_documents_staging_tokens_gin').using('gin', table.tokens),
+    index('icon_search_documents_staging_primary_tokens_gin').using('gin', table.primaryTokens),
+    index('icon_search_documents_staging_related_tokens_gin').using('gin', table.relatedTokens),
     index('icon_search_documents_staging_search_vector_gin').using('gin', table.searchVector),
+    index('icon_search_documents_staging_name_idx').on(table.name),
     index('icon_search_documents_staging_source_prefix_id_idx').on(
       table.source,
       table.prefix,
@@ -920,6 +922,10 @@ export const iconSearchDocumentsStaging = pgTable(
     check(
       'icon_search_documents_staging_source_check',
       sql`${table.source} IN ('builtin', 'custom')`,
+    ),
+    check(
+      'icon_search_documents_staging_category_check',
+      sql`${table.category} IN ${iconSearchCategories}`,
     ),
     check(
       'icon_search_documents_staging_custom_id_check',
@@ -934,8 +940,7 @@ export const iconSearchIndexState = pgTable(
     key: text('key').primaryKey().default('current'),
     indexVersion: text('index_version').notNull(),
     iconPackageVersion: text('icon_package_version').notNull(),
-    searchDataVersion: text('search_data_version').notNull(),
-    rulesVersion: text('rules_version').notNull(),
+    indexRulesVersion: text('index_rules_version').notNull(),
     documentCount: integer('document_count').notNull(),
     completedAt: timestamp('completed_at', timestampOptions).notNull(),
   },

@@ -9,8 +9,7 @@ let status: IconSearchStatus = 'ready'
 export type IconSearchStateInput = {
   indexVersion: string
   iconPackageVersion: string
-  searchDataVersion: string
-  rulesVersion: string
+  indexRulesVersion: string
 }
 
 export function setIconSearchStatus(nextStatus: IconSearchStatus) {

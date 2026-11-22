@@ -1,84 +1,43 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, getTableName, isNull, sql } from 'drizzle-orm'
 import { setImmediate } from 'node:timers/promises'
 import type { Db, DbExecutor } from '../../../../db'
-import { customIconSetIcons, customIconSets, iconSearchIndexState } from '../../../../db/schema'
-import { deriveCustomIconSearchDocument, type IconSearchDocument } from '../document'
+import {
+  customIconSetIcons,
+  customIconSets,
+  iconSearchDocuments,
+  iconSearchDocumentsStaging,
+  iconSearchIndexState,
+} from '../../../../db/schema'
+import { deriveCustomIconSearchFacts, type IconSearchFacts } from '../facts'
 import { lockIconSearchWrites, type IconSearchStateInput } from './state'
-import { getIconPreference } from '../rules'
+import { iconSearchDocumentColumns, insertDocumentBatch } from './sync'
 
-const importTable = 'icon_search_documents_staging'
+const importTable = getTableName(iconSearchDocumentsStaging)
 const importBatchSize = 1_000
-
-async function stageDocumentBatch(executor: DbExecutor, documents: IconSearchDocument[]) {
-  if (documents.length === 0) return
-  const payload = JSON.stringify(
-    documents.map((document) => ({
-      id: document.id,
-      prefix: document.prefix,
-      name: document.name,
-      source: document.source,
-      collection: document.collection,
-      palette: document.palette,
-      preference: getIconPreference(document),
-      custom_icon_id: document.customIconId,
-      exact_phrases: document.exactPhrases,
-      full_expressions: document.fullExpressions,
-      primary_expressions: document.primaryExpressions,
-      exact_expressions: document.exactExpressions,
-      full_tokens: document.fullTokens,
-      primary_tokens: document.primaryTokens,
-      primary_english_terms: document.primaryEnglishTerms.join(' '),
-      auxiliary_english_terms: document.auxiliaryEnglishTerms.join(' '),
-    })),
-  )
-  await executor.execute(sql`
-    INSERT INTO ${sql.identifier(importTable)} (
-      id, prefix, name, source, collection, palette, preference, custom_icon_id,
-      exact_phrases, full_tokens, primary_tokens, full_expressions, primary_expressions, exact_expressions, search_vector
-    )
-    SELECT document.id, document.prefix, document.name, document.source,
-      document.collection, document.palette, document.preference, document.custom_icon_id,
-      document.exact_phrases, document.full_tokens, document.primary_tokens,
-      document.full_expressions, document.primary_expressions, document.exact_expressions,
-      setweight(to_tsvector('simple', document.primary_english_terms), 'A') ||
-        setweight(to_tsvector('simple', document.auxiliary_english_terms), 'B')
-    FROM jsonb_to_recordset(${payload}::jsonb) AS document(
-      id text,
-      prefix text,
-      name text,
-      source text,
-      collection text,
-      palette boolean,
-      preference integer,
-      custom_icon_id uuid,
-      exact_phrases text[],
-      full_tokens text[],
-      primary_tokens text[],
-      full_expressions text[],
-      primary_expressions text[],
-      exact_expressions text[],
-      primary_english_terms text,
-      auxiliary_english_terms text
-    )
-  `)
-}
+const ginIndexes = [
+  'exact_keys_gin',
+  'tokens_gin',
+  'primary_tokens_gin',
+  'related_tokens_gin',
+  'search_vector_gin',
+]
 
 async function stageBuiltinDocuments(
   database: Db,
-  documents: AsyncIterable<IconSearchDocument> | Iterable<IconSearchDocument>,
+  documents: AsyncIterable<IconSearchFacts> | Iterable<IconSearchFacts>,
 ) {
-  let batch: IconSearchDocument[] = []
+  let batch: IconSearchFacts[] = []
   for await (const document of documents) {
     batch.push(document)
     if (batch.length < importBatchSize) continue
     await database.transaction(async (tx) => {
-      await stageDocumentBatch(tx, batch)
+      await insertDocumentBatch(tx, batch, iconSearchDocumentsStaging)
     })
     batch = []
     await setImmediate()
   }
   await database.transaction(async (tx) => {
-    await stageDocumentBatch(tx, batch)
+    await insertDocumentBatch(tx, batch, iconSearchDocumentsStaging)
   })
 }
 
@@ -96,16 +55,15 @@ async function stageCustomDocuments(executor: DbExecutor, rebuildCustom: boolean
       .from(customIconSetIcons)
       .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
       .where(and(isNull(customIconSetIcons.deletedAt), isNull(customIconSets.deletedAt)))
-    await stageDocumentBatch(executor, customRows.map(deriveCustomIconSearchDocument))
+    await insertDocumentBatch(
+      executor,
+      customRows.map(deriveCustomIconSearchFacts),
+      iconSearchDocumentsStaging,
+    )
   } else {
     await executor.execute(sql`
-      INSERT INTO ${sql.identifier(importTable)} (
-        id, prefix, name, source, collection, palette, preference, custom_icon_id,
-        exact_phrases, full_tokens, primary_tokens, full_expressions, primary_expressions, exact_expressions, search_vector
-      )
-      SELECT id, prefix, name, source, collection, palette, preference, custom_icon_id,
-        exact_phrases, full_tokens, primary_tokens, full_expressions, primary_expressions, exact_expressions, search_vector
-      FROM icon_search_documents WHERE source = 'custom'
+      INSERT INTO ${iconSearchDocumentsStaging} (${iconSearchDocumentColumns})
+      SELECT ${iconSearchDocumentColumns} FROM ${iconSearchDocuments} WHERE source = 'custom'
     `)
   }
 }
@@ -139,7 +97,7 @@ async function swapDocumentTables(executor: DbExecutor) {
     sql`ALTER TABLE icon_search_documents_swap RENAME TO icon_search_documents_staging`,
   )
 
-  const constraints = ['pkey', 'source_check', 'custom_id_check']
+  const constraints = ['pkey', 'source_check', 'custom_id_check', 'category_check']
   for (const name of constraints) {
     await executor.execute(
       sql`ALTER TABLE icon_search_documents_staging RENAME CONSTRAINT ${sql.identifier(`icon_search_documents_${name}`)} TO ${sql.identifier(`icon_search_documents_swap_${name}`)}`,
@@ -152,14 +110,7 @@ async function swapDocumentTables(executor: DbExecutor) {
     )
   }
 
-  const indexes = [
-    'full_tokens_gin',
-    'full_expressions_gin',
-    'exact_phrases_gin',
-    'search_vector_gin',
-    'source_prefix_id_idx',
-    'custom_icon_id_unique',
-  ]
+  const indexes = [...ginIndexes, 'name_idx', 'source_prefix_id_idx', 'custom_icon_id_unique']
   for (const name of indexes) {
     await executor.execute(
       sql`ALTER INDEX ${sql.identifier(`icon_search_documents_${name}`)} RENAME TO ${sql.identifier(`icon_search_documents_swap_${name}`)}`,
@@ -174,14 +125,8 @@ async function swapDocumentTables(executor: DbExecutor) {
 }
 
 async function cleanPendingIndexes(executor: DbExecutor) {
-  // Complete bulk GIN work before exposing the table; otherwise each search
-  // scans the same pending list, especially once per possible expression key.
-  for (const name of [
-    'full_tokens_gin',
-    'exact_phrases_gin',
-    'search_vector_gin',
-    'full_expressions_gin',
-  ]) {
+  // Complete bulk GIN work before searches can scan the pending lists.
+  for (const name of ginIndexes) {
     await executor.execute(
       sql`SELECT gin_clean_pending_list(${`${importTable}_${name}`}::regclass)`,
     )
@@ -190,8 +135,8 @@ async function cleanPendingIndexes(executor: DbExecutor) {
 
 export async function replaceBuiltinIconSearchDocuments(
   database: Db,
-  documents: AsyncIterable<IconSearchDocument> | Iterable<IconSearchDocument>,
-  state: IconSearchStateInput,
+  documents: AsyncIterable<IconSearchFacts> | Iterable<IconSearchFacts>,
+  { indexVersion, iconPackageVersion, indexRulesVersion }: IconSearchStateInput,
   options: {
     rebuildCustom: boolean
     onCleanupError?: ((error: Error) => void) | undefined
@@ -212,7 +157,9 @@ export async function replaceBuiltinIconSearchDocuments(
       const countRows = Array.isArray(countResult) ? countResult : countResult.rows
       await tx.delete(iconSearchIndexState)
       await tx.insert(iconSearchIndexState).values({
-        ...state,
+        indexVersion,
+        iconPackageVersion,
+        indexRulesVersion,
         key: 'current',
         documentCount: countRows[0]!.total,
         completedAt: new Date(),

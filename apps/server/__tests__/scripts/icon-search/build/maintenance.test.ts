@@ -1,104 +1,52 @@
-import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { appendFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { loadMaintainedSearchData } from '../../../../scripts/icon-search/build/maintenance'
-
-const hash = (value: string) => createHash('sha256').update(value).digest('hex')
-
-async function temporaryDirectory() {
-  const directory = await mkdtemp(join(tmpdir(), 'icon-search-maintenance-'))
-  onTestFinished(() => rm(directory, { recursive: true, force: true }))
-  return directory
-}
-
-async function writeFixture(content: string, checksum = hash(content)) {
-  const directory = await temporaryDirectory()
-  await mkdir(join(directory, 'translations'))
-  await writeFile(join(directory, 'translations/test.jsonl'), content)
-  await writeFile(
-    join(directory, 'manifest.json'),
-    JSON.stringify({
-      formatVersion: 2,
-      iconPackageVersion: 'older',
-      dataVersion: 'chinese-1',
-      files: [{ kind: 'translations', path: 'translations/test.jsonl', checksum }],
-    }),
-  )
-  return directory
-}
-
-async function writeTranslationFixture(records: unknown) {
-  const content = `${(Array.isArray(records) ? records : [records]).map((record) => JSON.stringify(record)).join('\n')}\n`
-  return writeFixture(content)
-}
+import { fixtureCollection, temporaryDirectory, writeResourceFixture } from './resources-fixture'
 
 describe('maintained icon search data', () => {
-  it('loads a partial data set whose source package version is older', async () => {
-    const line = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: ['闹钟'] })}\n`
-    const result = await loadMaintainedSearchData(await writeFixture(line))
-    expect(result).toMatchObject({ iconPackageVersion: 'older', dataVersion: 'chinese-1' })
-    expect(result.translations).toHaveLength(1)
+  it('loads the concept dictionary and verifies the official snapshots', async () => {
+    const { directory } = await writeResourceFixture(await temporaryDirectory())
+    const data = await loadMaintainedSearchData(directory, [fixtureCollection])
+
+    expect(data.conceptsVersion).toBe('chinese-concepts-1')
+    expect(data.concepts.byKey.get('闹钟')?.en).toEqual(['alarm-clock'])
+    expect(data.official.checksums).toHaveLength(4)
+    expect(data.official.forCollection(fixtureCollection)('block-seven')?.titles).toEqual([
+      '俄罗斯方块',
+    ])
   })
 
-  it('fails for damaged or conflicting maintenance files', async () => {
-    const line = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: ['闹钟'] })}\n`
-    await expect(
-      loadMaintainedSearchData(await writeFixture(line, '0'.repeat(64))),
-    ).rejects.toThrow('checksum')
+  it('rejects malformed and duplicate dictionary entries', async () => {
+    const { directory, concepts } = await writeResourceFixture(await temporaryDirectory())
+    const validate = () => loadMaintainedSearchData(directory, [fixtureCollection])
+    const words = join(concepts, 'words.json')
+    await writeFile(words, '[{"zh":["闹钟"]}]')
+    await expect(validate()).rejects.toThrow('At least one en or intentEn target is required')
 
-    const duplicateDirectory = await writeFixture(`${line}${line}`)
-    await expect(loadMaintainedSearchData(duplicateDirectory)).rejects.toThrow('Duplicate')
+    await writeFile(words, '[{"zh":["闹钟","闹 钟"],"en":["alarm-clock"]}]')
+    await expect(validate()).rejects.toThrow('Duplicate key in words.json: 闹钟')
+  })
 
-    const wrongRecord = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: [123] })}\n`
-    await expect(loadMaintainedSearchData(await writeFixture(wrongRecord))).rejects.toThrow(
-      'Invalid translation record',
+  it('rejects concept targets that only occur in the collection metadata', async () => {
+    const { directory, concepts } = await writeResourceFixture(await temporaryDirectory())
+    await writeFile(join(concepts, 'intent.json'), '[{"zh":["测试"],"intentEn":["fixture"]}]')
+
+    await expect(loadMaintainedSearchData(directory, [fixtureCollection])).rejects.toThrow(
+      '测试.intentEn: fixture',
     )
   })
 
-  it('requires category translation ownership to identify a package category', async () => {
-    const valid = await loadMaintainedSearchData(
-      await writeTranslationFixture({
-        kind: 'category',
-        owner: { prefix: 'mdi', category: 'Account / User' },
-        source: 'account',
-        translations: ['账户'],
-      }),
-    )
-    expect(valid.translations).toHaveLength(1)
+  it('rejects an incompatible maintenance manifest or modified official bytes', async () => {
+    const { directory, manifest, official } = await writeResourceFixture(await temporaryDirectory())
+    const validate = () => loadMaintainedSearchData(directory, [fixtureCollection])
+    const path = join(directory, 'manifest.json')
+    await writeFile(path, JSON.stringify({ ...manifest, formatVersion: 2 }))
+    await expect(validate()).rejects.toThrow('Invalid icon search resource manifest')
 
-    await expect(
-      loadMaintainedSearchData(
-        await writeTranslationFixture({
-          kind: 'category',
-          owner: 'mdi:account',
-          source: 'account',
-          translations: ['账户'],
-        }),
-      ),
-    ).rejects.toThrow('Invalid translation record')
-  })
-
-  it('rejects empty translations and normalized duplicate sources', async () => {
-    await expect(
-      loadMaintainedSearchData(
-        await writeTranslationFixture({
-          kind: 'icon',
-          owner: 'lucide:bell',
-          source: 'bell',
-          translations: ['   '],
-        }),
-      ),
-    ).rejects.toThrow('Invalid translation record')
-    await expect(
-      loadMaintainedSearchData(
-        await writeTranslationFixture([
-          { kind: 'icon', owner: 'lucide:bell', source: 'bell', translations: ['铃铛'] },
-          { kind: 'icon', owner: 'lucide:bell', source: 'ＢＥＬＬ', translations: ['铃'] },
-        ]),
-      ),
-    ).rejects.toThrow('Duplicate')
+    await writeFile(path, JSON.stringify(manifest))
+    await appendFile(join(official, 'icon-park.json'), ' ')
+    await expect(validate()).rejects.toThrow('Official snapshot checksum mismatch')
   })
 })

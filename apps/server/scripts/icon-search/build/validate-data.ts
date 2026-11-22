@@ -1,15 +1,17 @@
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { iconSearchResourcesDirectory, loadMaintainedSearchData } from './maintenance'
+import { loadIconPackage } from './package-source'
 
-import { loadMaintainedSearchData } from './maintenance'
-
-const serverDirectory = join(dirname(fileURLToPath(import.meta.url)), '../../..')
-const maintained = await loadMaintainedSearchData(join(serverDirectory, 'resources/icon-search'))
+const iconPackage = await loadIconPackage()
+const maintained = await loadMaintainedSearchData(
+  iconSearchResourcesDirectory,
+  iconPackage.collections,
+)
 
 console.log(
   JSON.stringify({
-    iconPackageVersion: maintained.iconPackageVersion,
-    searchDataVersion: maintained.dataVersion,
-    translationRecords: maintained.translations.length,
+    iconPackageVersion: iconPackage.version,
+    conceptsVersion: maintained.conceptsVersion,
+    conceptKeys: maintained.concepts.byKey.size,
+    officialSnapshots: maintained.official.checksums.length,
   }),
 )

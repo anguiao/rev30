@@ -9,16 +9,20 @@ import {
 } from '../../../src/modules/icons/cursor'
 import { InvalidIconCursorError } from '../../../src/modules/icons/errors'
 
+const searchOptions = {
+  query: 'bell',
+  source: 'builtin',
+  prefix: 'lucide',
+  dataVersion: 'index-v1',
+  queryRulesVersion: 'query-v1',
+} as const
+const position = { tier: 3, matchScore: 2, rank: '0.5', preference: 1, id: 'lucide:bell' }
+
 describe('icon cursor query binding', () => {
   it('binds an NFKC-expanding valid query without exceeding the cursor limit', () => {
     const query = '\uFDFA'.repeat(120)
     expect(iconSearchQuerySchema.safeParse({ keyword: query, limit: '60' }).success).toBe(true)
-    const options = {
-      query,
-      source: 'builtin' as const,
-      dataVersion: 'index-v1',
-    }
-    const position = { level: 1, primaryMatches: 0, rank: '0.5', preference: 1, id: 'lucide:bell' }
+    const options = { ...searchOptions, query }
     const cursor = formatIconSearchCursor(options, position)
 
     expect(cursor.length).toBeLessThanOrEqual(2_048)
@@ -28,37 +32,71 @@ describe('icon cursor query binding', () => {
     )
   })
 
+  it.each([
+    ['the index version', { dataVersion: 'index-v2' }],
+    ['the query rules version', { queryRulesVersion: 'query-v2' }],
+    ['the source', { source: 'all' as const }],
+    ['the prefix', { prefix: 'tabler' }],
+  ])('rejects search cursors when %s changes', (_scope, changes) => {
+    const cursor = formatIconSearchCursor(searchOptions, position)
+
+    expect(() => parseIconSearchCursor(cursor, { ...searchOptions, ...changes })).toThrow(
+      InvalidIconCursorError,
+    )
+  })
+
+  it('preserves the existing by-ID browse cursor', () => {
+    const options = { source: 'builtin' as const, prefix: 'lucide', dataVersion: 'icons-v1' }
+    const legacyCursor = Buffer.from(
+      JSON.stringify({
+        mode: 'browse',
+        ...options,
+        rulesVersion: '9e8f1b852038c6d01ec4d85198313d2533436f3ecf8f712f482d2410332deb23',
+        position: { id: position.id },
+      }),
+    ).toString('base64url')
+
+    expect(parseIconBrowseCursor(legacyCursor, options)).toBe(position.id)
+    expect(() =>
+      parseIconBrowseCursor(legacyCursor, { ...options, dataVersion: 'icons-v2' }),
+    ).toThrow(InvalidIconCursorError)
+  })
+
   it('rejects cursors from another pagination mode', () => {
     const options = { source: 'builtin' as const, prefix: 'lucide', dataVersion: 'icons-v1' }
-    const searchOptions = { ...options, query: '' }
-    const position = { level: 1, primaryMatches: 0, rank: '0.5', preference: 1, id: 'lucide:bell' }
+    const keywordOptions = { ...searchOptions, ...options }
     const browseCursor = formatIconBrowseCursor(options, { id: position.id })
-    const searchCursor = formatIconSearchCursor(searchOptions, position)
+    const searchCursor = formatIconSearchCursor(keywordOptions, position)
 
     expect(parseIconBrowseCursor(browseCursor, options)).toBe(position.id)
     expect(() => parseIconBrowseCursor(searchCursor, options)).toThrow(InvalidIconCursorError)
-    expect(() => parseIconSearchCursor(browseCursor, searchOptions)).toThrow(InvalidIconCursorError)
+    expect(() => parseIconSearchCursor(browseCursor, keywordOptions)).toThrow(
+      InvalidIconCursorError,
+    )
+  })
+
+  it.each([-1, 4, 1.5])('rejects an invalid search tier %d', (tier) => {
+    const cursor = formatIconSearchCursor(searchOptions, { ...position, tier })
+
+    expect(() => parseIconSearchCursor(cursor, searchOptions)).toThrow(InvalidIconCursorError)
   })
 
   it.each(['0', '0.0e-999', '1e-45', '1e-40', '1.1754944e-38', '0.12345679', '3.4028235e+38'])(
     'preserves valid real rank text %s',
     (rank) => {
-      const options = { query: 'bell', source: 'builtin' as const, dataVersion: 'index-v1' }
-      const position = { level: 0, primaryMatches: 0, rank, preference: 1, id: 'lucide:bell' }
-      const cursor = formatIconSearchCursor(options, position)
+      const rankedPosition = { ...position, tier: 0, rank }
+      const cursor = formatIconSearchCursor(searchOptions, rankedPosition)
 
-      expect(parseIconSearchCursor(cursor, options)).toEqual(position)
+      expect(parseIconSearchCursor(cursor, searchOptions)).toEqual(rankedPosition)
     },
   )
 
   it.each(['3.4028236e+38', '7e-46', '1e-999'])(
     'rejects rank text %s that overflows or underflows real',
     (rank) => {
-      const options = { query: 'bell', source: 'builtin' as const, dataVersion: 'index-v1' }
-      const position = { level: 0, primaryMatches: 0, rank, preference: 1, id: 'lucide:bell' }
-      const cursor = formatIconSearchCursor(options, position)
+      const cursor = formatIconSearchCursor(searchOptions, { ...position, tier: 0, rank })
 
-      expect(() => parseIconSearchCursor(cursor, options)).toThrow(InvalidIconCursorError)
+      expect(() => parseIconSearchCursor(cursor, searchOptions)).toThrow(InvalidIconCursorError)
     },
   )
 })

@@ -1,4 +1,5 @@
 import { lookupCollection } from '@iconify/json'
+import type { IconifyInfo, IconifyJSON } from '@iconify/types'
 import { ICON_PACKAGE_VERSION, loadIconCollections } from '../../../src/modules/icons/builtin'
 
 export type IconPackageCollection = {
@@ -8,7 +9,9 @@ export type IconPackageCollection = {
   icons: string[]
   hidden?: string[]
   aliases: Record<string, { parent: string }>
-  categories?: Record<string, string[]>
+  category?: IconifyInfo['category']
+  categories?: IconifyJSON['categories']
+  chars?: IconifyJSON['chars']
 }
 
 export async function loadIconPackage(): Promise<{
@@ -25,7 +28,8 @@ export async function loadIconPackage(): Promise<{
     for (const [name, icon] of Object.entries(iconSet.icons)) {
       ;(icon.hidden ? hidden : icons).push(name)
     }
-    const categories = iconSet.categories
+    const { categories, chars } = iconSet
+    const category = metadata[prefix]?.category
     collections.push({
       prefix,
       collection: iconSet.info?.name?.trim() || metadata[prefix]?.name.trim() || prefix,
@@ -38,7 +42,9 @@ export async function loadIconPackage(): Promise<{
           { parent: alias.parent },
         ]),
       ),
+      ...(category === undefined ? {} : { category }),
       ...(categories ? { categories } : {}),
+      ...(chars ? { chars } : {}),
     })
   }
 

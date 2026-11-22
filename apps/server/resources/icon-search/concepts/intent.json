@@ -647,6 +647,8 @@
   { "zh": ["钢笔工具"], "intentEn": ["bezier", "curve"] },
   { "zh": ["矢量路径"], "intentEn": ["bezier"] },
   { "zh": ["曲线节点"], "intentEn": ["vector-bezier", "node"] },
+  { "zh": ["线段"], "intentEn": ["separator"] },
+  { "zh": ["直线"], "intentEn": ["separator"] },
   { "zh": ["对象分组"], "intentEn": ["group"] },
   { "zh": ["对齐网格", "网格吸附"], "intentEn": ["grid"] },
   { "zh": ["裁剪标记", "裁切线"], "intentEn": ["crop"] },

@@ -178,18 +178,38 @@
   { "zh": ["平行四边形"], "en": ["parallelogram"] },
   { "zh": ["半圆"], "en": ["semicircle"] },
   { "zh": ["弧线"], "en": ["arc", "curve"] },
-  { "zh": ["线段"], "en": ["line", "line-segment"] },
+  {
+    "zh": ["线段"],
+    "en": ["line-segment", "line-segments", "line-diagonal", "line-vertical", "horizontal-rule"],
+    "exactNames": ["line"],
+    "demoteCategories": ["brand"]
+  },
   { "zh": ["曲线"], "en": ["curve", "curved"] },
   { "zh": ["抛物线"], "en": ["parabola"] },
   { "zh": ["贝塞尔", "贝塞尔曲线"], "en": ["bezier"] },
   { "zh": ["虚线"], "en": ["dashed-line", "dashed"] },
   { "zh": ["点线", "点状线"], "en": ["dotted-line"] },
   { "zh": ["边框"], "en": ["border", "borders"] },
-  { "zh": ["圆角"], "en": ["rounded", "radius"] },
+  {
+    "zh": ["圆角"],
+    "en": ["rounded-corner", "border-radius", "corner-radius"],
+    "exactNames": ["radius"]
+  },
   { "zh": ["阴影"], "en": ["shadow"] },
-  { "zh": ["填充"], "en": ["fill"] },
-  { "zh": ["描边"], "en": ["stroke", "outline"] },
-  { "zh": ["轮廓"], "en": ["outline"] },
+  {
+    "zh": ["填充"],
+    "en": ["paint-bucket", "format-color-fill", "fill-drip", "color-fill"],
+    "exactNames": ["fill"]
+  },
+  {
+    "zh": ["描边"],
+    "en": ["stroke-width", "line-weight", "stroke-full", "stroke-partial", "border-width"]
+  },
+  {
+    "zh": ["轮廓"],
+    "en": ["shape-outline"],
+    "exactNames": ["circle-outline", "square-outline", "rectangle-outline"]
+  },
   { "zh": ["颜色", "色彩"], "en": ["color", "colour", "colors", "colours"] },
   { "zh": ["调色板", "色板"], "en": ["palette"] },
   { "zh": ["渐变"], "en": ["gradient"] },
@@ -220,7 +240,11 @@
   { "zh": ["脚注"], "en": ["footnote"] },
   { "zh": ["页眉"], "en": ["page-header"] },
   { "zh": ["页脚"], "en": ["footer", "page-footer"] },
-  { "zh": ["粗体", "加粗"], "en": ["bold"] },
+  {
+    "zh": ["粗体", "加粗"],
+    "en": ["text-b", "format-bold", "type-bold"],
+    "exactNames": ["bold", "text-bold"]
+  },
   { "zh": ["斜体"], "en": ["italic", "italics"] },
   { "zh": ["下划线"], "en": ["underline"] },
   { "zh": ["删除线"], "en": ["strikethrough", "strike-through"] },
@@ -1186,7 +1210,11 @@
   { "zh": ["神经网络"], "en": ["neural-network"] },
   { "zh": ["传感器"], "en": ["sensor", "sensors"] },
   { "zh": ["蓝图"], "en": ["blueprint"] },
-  { "zh": ["灯具"], "en": ["light", "lighting"] },
+  {
+    "zh": ["灯具"],
+    "en": ["lamp", "lighting", "lightbulb", "light-bulb", "flashlight", "ceiling-light"],
+    "exactNames": ["light"]
+  },
   { "zh": ["多语言", "国际化"], "en": ["language", "languages", "i18n"] },
   { "zh": ["语言"], "en": ["language", "languages"] },
   { "zh": ["翻页"], "en": ["page-turn"] },
@@ -1534,7 +1562,11 @@
   { "zh": ["地图底图"], "en": ["map"] },
   { "zh": ["表头"], "en": ["table-header", "heading"] },
   { "zh": ["页码"], "en": ["page-number"] },
-  { "zh": ["边界"], "en": ["boundary", "border", "outline"] },
+  {
+    "zh": ["边界"],
+    "en": ["boundary", "border-all", "border-outer", "border-style", "bounding-box"],
+    "exactNames": ["border"]
+  },
   { "zh": ["测量"], "en": ["measurement", "measure"] },
   { "zh": ["玻璃"], "en": ["glass"] },
   { "zh": ["组合键"], "en": ["keyboard-shortcut"] },
@@ -1577,7 +1609,8 @@
   { "zh": ["鸿蒙"], "en": ["harmonyos"] },
   {
     "zh": ["直线"],
-    "en": ["line", "line-diagonal", "line-horizontal", "line-vertical"],
+    "en": ["line-segment", "line-diagonal", "line-horizontal", "line-vertical", "horizontal-rule"],
+    "exactNames": ["line"],
     "demoteCategories": ["brand"]
   },
   { "zh": ["主机"], "en": ["host", "hosts"] },

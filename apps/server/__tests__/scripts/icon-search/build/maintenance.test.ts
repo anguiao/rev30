@@ -23,7 +23,9 @@ describe('maintained icon search data', () => {
     const validate = () => loadMaintainedSearchData(directory, [fixtureCollection])
     const words = join(concepts, 'words.json')
     await writeFile(words, '[{"zh":["闹钟"]}]')
-    await expect(validate()).rejects.toThrow('At least one en or intentEn target is required')
+    await expect(validate()).rejects.toThrow(
+      'At least one en, exactNames or intentEn target is required',
+    )
 
     await writeFile(words, '[{"zh":["闹钟","闹 钟"],"en":["alarm-clock"]}]')
     await expect(validate()).rejects.toThrow('Duplicate key in words.json: 闹钟')

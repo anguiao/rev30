@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { compactIconSearchKey, hanCharacterPattern } from './normalization'
 
 // Increment when query parsing or ranking changes, independently of the index rules.
-const queryRulesRevision = 1
+const queryRulesRevision = 2
 const conceptFiles = ['words', 'phrases', 'intent'] as const
 type ConceptFile = (typeof conceptFiles)[number]
 type ConceptSources = Readonly<Record<ConceptFile, unknown>>
@@ -27,14 +27,15 @@ const conceptRecordSchema = z
   .strictObject({
     zh: z.array(chineseKeySchema).min(1),
     en: z.array(englishTargetSchema).optional(),
+    exactNames: z.array(englishTargetSchema).optional(),
     intentEn: z.array(englishTargetSchema).optional(),
     exclude: z.array(englishTargetSchema).optional(),
     demoteCategories: z.array(iconSearchCategorySchema).optional(),
     parts: z.array(chineseKeySchema).optional(),
   })
-  .refine((record) => record.en?.length || record.intentEn?.length, {
+  .refine((record) => record.en?.length || record.exactNames?.length || record.intentEn?.length, {
     path: ['en'],
-    message: 'At least one en or intentEn target is required',
+    message: 'At least one en, exactNames or intentEn target is required',
   })
 
 const conceptFileSchema = z.array(conceptRecordSchema)
@@ -44,6 +45,7 @@ export type IconSearchCategory = z.infer<typeof iconSearchCategorySchema>
 export type IconSearchConcept = {
   readonly zh: readonly string[]
   readonly en: readonly string[]
+  readonly exactNames: readonly string[]
   readonly intentEn: readonly string[]
   readonly exclude: readonly string[]
   readonly demoteCategories: readonly IconSearchCategory[]
@@ -77,6 +79,7 @@ function mergeConcepts(
   return {
     zh: left.zh,
     en: unique([...left.en, ...right.en]),
+    exactNames: unique([...left.exactNames, ...right.exactNames]),
     intentEn: unique([...left.intentEn, ...right.intentEn]),
     exclude: unique([...left.exclude, ...right.exclude]),
     demoteCategories: unique([...left.demoteCategories, ...right.demoteCategories]),
@@ -110,6 +113,7 @@ export function compileIconSearchConcepts(
       const concept: IconSearchConcept = {
         zh: record.zh.map(normalizeConceptKey),
         en: unique(record.en),
+        exactNames: unique(record.exactNames),
         intentEn: unique(record.intentEn),
         exclude: unique(record.exclude),
         demoteCategories: unique(record.demoteCategories),

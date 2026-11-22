@@ -91,17 +91,24 @@ function conceptEvidence(
 ): UnitEvidence {
   const keys = [...new Set([key, ...concept.zh])]
   const literal = overlaps(sql`tokens`, keys)
+  const exactName = namesMatch(concept.exactNames)
   const primary = any([
     overlaps(sql`primary_tokens`, keys),
-    all([guards.undemoted, englishTargetsMatch(concept.en, 'AB')]),
+    all([guards.undemoted, any([exactName, englishTargetsMatch(concept.en, 'AB')])]),
   ])
-  const direct = any([literal, all([guards.undemoted, englishTargetsMatch(concept.en, 'ABC')])])
+  const direct = any([
+    literal,
+    all([guards.undemoted, any([exactName, englishTargetsMatch(concept.en, 'ABC')])]),
+  ])
   const related = any([
     literal,
     overlaps(sql`related_tokens`, keys),
     all([
       guards.allowed,
-      englishTargetsMatch([...new Set([...concept.en, ...concept.intentEn])], 'ABC'),
+      any([
+        exactName,
+        englishTargetsMatch([...new Set([...concept.en, ...concept.intentEn])], 'ABC'),
+      ]),
     ]),
   ])
   return { primary, direct, related, withPrefix: related }
@@ -176,7 +183,7 @@ function exactChineseEvidence(plan: ChineseIconSearchQuery) {
   const direct = any([
     literal,
     namesMatch(plan.exactNames),
-    all([undemoted, namesMatch(concept?.en ?? [])]),
+    all([undemoted, namesMatch(concept ? [...concept.en, ...concept.exactNames] : [])]),
   ])
   const condition = any([direct, all([undemoted, namesMatch(concept?.intentEn ?? [])])])
   const preferred = sql`prefix = ANY(${textArray(preferredIconPrefixes)})`

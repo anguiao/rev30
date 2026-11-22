@@ -324,6 +324,35 @@ void describe('Official Chinese metadata', () => {
 })
 
 void describe('Ambiguity and required conditions', () => {
+  void it('keeps standalone English names that directly represent a Chinese formatting or shape query', async () => {
+    for (const [keyword, prefix, name] of [
+      ['加粗', 'lucide', 'bold'],
+      ['填充', 'mdi', 'fill'],
+      ['线段', 'tabler', 'line'],
+    ] as const) {
+      const { rows } = await search(keyword, { prefix })
+      assert.equal(requireHit(rows, [name], 'name').tier, 0)
+    }
+  })
+
+  for (const [keyword, prefix, expected, unrelated] of [
+    ['灯具', 'ph', 'lamp', 'airplane-light'],
+    ['边界', 'mdi', 'border-all', 'account-alert-outline'],
+    ['圆角', 'material-symbols', 'rounded-corner', 'ulna-radius-rounded'],
+    ['填充', 'ph', 'paint-bucket-fill', 'airplane-fill'],
+    ['描边', 'material-symbols', 'stroke-full', '10k-outline'],
+    ['轮廓', 'mdi', 'shape-outline', 'academic-cap-outline'],
+    ['粗体', 'ph', 'text-b', 'airplane-bold'],
+    ['线段', 'ri', 'separator', '24-hours-line'],
+    ['直线', 'ri', 'separator', '4k-line'],
+  ] as const) {
+    void it(`${keyword} finds the intended shape or action in ${prefix}`, async () => {
+      const rows = await completeSearch(keyword, { prefix })
+      requireHit(rows.slice(0, firstPageSize), [expected], 'name')
+      assert(!rows.some(({ name }) => name === unrelated), `Unexpected ${prefix}:${unrelated}`)
+    })
+  }
+
   void it('罐头 finds canned food without matching a trash can', async () => {
     const rows = await completeSearch('罐头')
     requireHit(

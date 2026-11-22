@@ -14,6 +14,12 @@ const dictionary = compileIconSearchConcepts({
     { zh: ['通知'], en: ['notification'] },
     { zh: ['日志'], en: ['logs', 'audit-log'] },
     { zh: ['鼠标'], en: ['mouse'], demoteCategories: ['emoji'] },
+    {
+      zh: ['加粗'],
+      exactNames: ['bold', 'bold-hidden'],
+      exclude: ['hidden'],
+      demoteCategories: ['brand'],
+    },
     { zh: ['文件'], en: ['file'] },
     { zh: ['文件夹'], en: ['folder'] },
     { zh: ['打开'], en: ['open'] },
@@ -190,6 +196,32 @@ dbTest(
       ['noto:mouse', 0, 1],
       ['emojione:computer-mouse', 2, 0],
       ['emojione:mouse', 2, 0],
+    ])
+  },
+)
+
+dbTest(
+  'matches complete concept names in whole and mixed queries without rewarding style suffixes',
+  async ({ db }) => {
+    await insertDocuments(db, [
+      { id: 'lucide:bold' },
+      { id: 'ph:airplane-bold' },
+      { id: 'mdi:button-bold', tags: ['加粗'] },
+      { id: 'mdi:button', tags: ['加粗'] },
+      { id: 'logos:bold', category: 'brand' },
+      { id: 'other:bold-hidden' },
+    ])
+    const rows = await search(db, '加粗')
+    expect(scores(rows)).toEqual([
+      ['lucide:bold', 0, 3],
+      ['mdi:button', 2, 0],
+      ['mdi:button-bold', 2, 0],
+      ['logos:bold', 2, 0],
+    ])
+    expect(rows[1]!.rank).toBe(rows[2]!.rank)
+    expect(scores(await search(db, 'lucide 加粗'))).toEqual([['lucide:bold', 1, 1]])
+    expect((await search(db, 'bold', { prefix: 'ph' })).map((row) => row.id)).toEqual([
+      'ph:airplane-bold',
     ])
   },
 )

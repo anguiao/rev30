@@ -12,13 +12,19 @@ const sources = {
     { zh: ['打 开'], en: ['open'] },
     { zh: ['文件夹'], en: ['folder'] },
     { zh: ['Ｋ 线图', '股票图'], en: ['chart-candlestick'] },
-    { zh: ['通知', '通知消息'], en: ['notification'], demoteCategories: ['emoji'] },
+    {
+      zh: ['通知', '通知消息'],
+      en: ['notification'],
+      exactNames: ['notice'],
+      demoteCategories: ['emoji'],
+    },
   ],
   phrases: [{ zh: ['打开文件夹'], en: ['folder-open'], parts: ['打开', '文 件夹'] }],
   intent: [
     {
       zh: ['通知消息', '通 知'],
       en: ['notification', 'notifications'],
+      exactNames: ['notice', 'alert'],
       intentEn: ['bell', 'bell'],
       exclude: ['door-bell'],
       demoteCategories: ['emoji', 'brand'],
@@ -35,6 +41,7 @@ describe('icon search concept dictionary', () => {
     expect(byKey.get('通知')).toEqual({
       zh: ['通知', '通知消息'],
       en: ['notification', 'notifications'],
+      exactNames: ['notice', 'alert'],
       intentEn: ['bell'],
       exclude: ['door-bell'],
       demoteCategories: ['emoji', 'brand'],

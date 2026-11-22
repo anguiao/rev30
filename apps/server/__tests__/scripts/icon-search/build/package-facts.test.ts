@@ -110,6 +110,7 @@ it('validates concept targets against complete eligible terms and contiguous nam
       {
         zh: ['示例'],
         en: ['log-out', 'log-log', '42', '2fa', 'hidden-x', 'legacy-short'],
+        exactNames: ['folder', 'hidden-x', 'legacy-short'],
         intentEn: ['account', 'out-archive'],
         exclude: ['user', 'folder-gap', 'x'],
       },
@@ -127,6 +128,7 @@ it('rejects collection-only terms, unassigned categories, substrings and cross-f
       {
         zh: ['测试'],
         en: ['only', 'catalog', 'unassigned', 'lo', 'folder-open'],
+        exactNames: ['log-out', 'open'],
         intentEn: ['account-user', 'open-folder'],
         exclude: ['3d', 'out-account'],
       },
@@ -147,6 +149,8 @@ it('rejects collection-only terms, unassigned categories, substrings and cross-f
       '测试.intentEn: open-folder',
       '测试.exclude: 3d',
       '测试.exclude: out-account',
+      '测试.exactNames: log-out',
+      '测试.exactNames: open',
     ].join('\n'),
   )
 })

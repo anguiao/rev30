@@ -144,15 +144,16 @@ apps/server/resources/icon-search/
 | --- | --- |
 | `zh` | 必填，非空简体中文同义词数组，可含字母数字，如 `k线图`、`avi文件`。加载时归一化并去除汉字间及中英混排空白。同一条记录列出的中文写法共享英文目标，也能互相匹配自定义关键词、官方中文标题及标签 |
 | `en` | 可选字符串数组，直接等义英文词或连字符短语（如 `log-out`、`trash-can`、`settings`）；短语在编译时保留词序，单词不自动开启前缀通配 |
+| `exactNames` | 可选字符串数组，直接等义的完整图标原名。适用于容易和绘制样式混淆的词，例如“粗体”的 `bold` 匹配 `lucide:bold`。每个目标必须存在于锁定图标包的名称或别名中 |
 | `intentEn` | 可选字符串数组，后台用途延伸英文词或短语；仅允许命中 Tier 0 用途分与 Tier 2 |
 | `exclude` | 可选字符串数组。在该概念的英文推断分支中排除指定的词项或短语。例如“罐头”可排除 `trash-can`、`garbage-can` 和 `watering-can` |
 | `demoteCategories` | 可选。在指定集合大类中，仅靠该概念的英文推断命中的候选降至 Tier 2。例如“鼠标”在 Emoji 集合中降权，“烧瓶”在品牌和编程集合中降权。类别本身始终保留候选。官方中文标题、自定义关键词和官方相关标签按各自的证据参与排序 |
 | `parts` | 短语可选。显式列出允许组合的已有基础概念键，如“打开文件夹”允许“打开”与“文件夹”同时匹配。省略时按整词匹配；组成词只引用基础概念 |
 
 校验与合并规则：
-- 每条记录的 `en` 与 `intentEn` 至少有一项非空。
+- 每条记录的 `en`、`exactNames` 和 `intentEn` 至少有一项非空。
 - **同一文件内中文键必须唯一**，重复直接报错。
-- 若不同文件的记录共用一个规范化中文键，两条记录的 `zh` 必须包含完全相同的规范化写法，顺序可以不同。部分重叠时报错并列出两组写法。组内所有写法共享合并去重后的 `en`、`intentEn`、`exclude`、`demoteCategories` 和短语声明的 `parts`。含义不同的词可以分别声明相同的用途目标。
+- 若不同文件的记录共用一个规范化中文键，两条记录的 `zh` 必须包含完全相同的规范化写法，顺序可以不同。部分重叠时报错并列出两组写法。组内所有写法共享合并去重后的 `en`、`exactNames`、`intentEn`、`exclude`、`demoteCategories` 和短语声明的 `parts`。含义不同的词可以分别声明相同的用途目标。
 - **初版词典的编制**。从锁定图标包提取高频基础词和跨集合短语，结合用户在后台图标选择器或图标库中查找菜单图标、按钮图标或状态图标时使用的中文搜索词编制词条。英文词频用于发现候选词。分三类记录定稿条数、编制和审校耗时，以及辅助生成使用的 token 数。
 - 替换旧译表之前，以相同的图标集筛选复测旧版能命中的常用对象，如“服务器”和“蓝牙”。当 `log` 或 `can` 等多义词把切题图标挤到后面时，优先用含义明确的复合名称或所属图标集的官方中文改善排序。
 
@@ -203,7 +204,7 @@ apps/server/resources/icon-search/
 
 | 单元类型 | 匹配条件 | 排除与降权 |
 | --- | --- | --- |
-| 命中概念词典的中文单元 | 当前中文键及同一词条 `zh` 中的同义词，任一命中 `tokens` 或 `related_tokens` 即可。也可通过该概念的 `en` 或 `intentEn` 英文分支命中 | `exclude` 排除有明确词项证据的错误推断，`demoteCategories` 调整该单元英文推断的层级。字面中文和标签分别按其来源参与排序 |
+| 命中概念词典的中文单元 | 当前中文键及同一词条 `zh` 中的同义词，任一命中 `tokens` 或 `related_tokens` 即可。也可通过该概念的 `en`、`exactNames` 或 `intentEn` 英文分支命中 | `exclude` 排除有明确词项证据的错误推断，`demoteCategories` 调整该单元英文推断的层级。字面中文和标签分别按其来源参与排序 |
 | 未命中词典的字面中文单元 | 直接词项查 `tokens`，相关标签查 `related_tokens` | 无 |
 | 数字/符号/单字符单元 | `tokens @> ARRAY[词项]::text[]` | 无 |
 | 纯英文词单元（长度 $\ge 2$ 字母） | 精确部分 `tokens @> ARRAY[词项]` / `search_vector @@ '词项'`；前缀部分 `search_vector @@ '词项:*'` | 无 |
@@ -213,6 +214,7 @@ apps/server/resources/icon-search/
 其中概念中的英文目标写法遵循统一转译规则：
 - 带连字符的短语（如 `log-out`、`trash-can`、`credit-card`）编译为有序相邻向量 `to_tsquery('simple', 'log:A <-> out:A')`。
 - 中文概念推导的单个英文目标（`en`、`intentEn`）只在图标名、逐图标分类和自定义关键词中精确匹配，如 `file:ABC`。候选与排序使用相同的字段限制。`bell` 与 `bells` 需在词典中分别列出。用户直接输入的英文词按原规则查所有字段，包括图标集名称和 prefix。
+- `exactNames` 通过 `name = ANY(...)` 匹配完整名称，适用于单独查询、组合条件和声明的 `parts`。整名证据计入直接命中的层级和主字段命中数，词项相关度 `ts_rank` 仅由允许词项匹配的英文条件计算。
 - `exclude` 中的英文短语按名称原词序排除。例如“罐头”排除 `trash-can` 时，条件为 `NOT (search_vector @@ to_tsquery('simple', 'trash:A <-> can:A'))`。
 
 ### 5.4 四级互斥分层（Tier 0～3）、排序元组与分页游标
@@ -221,8 +223,8 @@ apps/server/resources/icon-search/
 
 | 层级 | 定义与准入条件 | `match_score` 计算方式 |
 | --- | --- | --- |
-| **Tier 0（精确完整命中）** | 整条查询或其 `compactKey` 命中 `exact_keys`，或原名精确匹配整串概念的 `en` / `intentEn`（`name = ANY(...)`）。英文推断须通过该概念的排除规则，降权的推断在 Tier 2 参与。取图标可用的最高分 | 用户填写的完整关键词精确命中，与主力集合的直接精确命中（含官方标题）同为 3 分。主力集合的用途精确命中为 2 分。其余直接精确命中为 1 分，其余用途精确命中为 0 分 |
-| **Tier 1（直接词义完整命中）** | 其余结果中，所有条件均可由直接词项、英文完整词或未降权的 `en` 满足 | 命中名称、自定义关键词或直接主词项的单元数降序 |
+| **Tier 0（精确完整命中）** | 整条查询或其 `compactKey` 命中 `exact_keys`，或原名精确匹配整串概念的 `en`、`exactNames` 或 `intentEn`（`name = ANY(...)`）。英文推断须通过该概念的排除规则，降权的推断在 Tier 2 参与。取图标可用的最高分 | 用户填写的完整关键词精确命中，与主力集合的直接精确命中（含官方标题）同为 3 分。主力集合的用途精确命中为 2 分。其余直接精确命中为 1 分，其余用途精确命中为 0 分 |
+| **Tier 1（直接词义完整命中）** | 其余结果中，所有条件均可由直接词项、英文完整词或未降权的 `en`、`exactNames` 满足 | 命中名称、自定义关键词或直接主词项的单元数降序 |
 | **Tier 2（相关命中）** | 其余结果中，所有条件均满足，至少一项需要官方相关标签、用途延伸或降权的英文推断。例如“新建”仅通过 RemixIcon 的相关标签命中普通文件图标 | 直接主字段命中单元数降序 |
 | **Tier 3（中英混搜中的英文前缀匹配）** | 其余结果中，所有查询条件均满足，至少一个用户输入的纯英文字母词（长度 ≥ 2）依靠 `term:*` 前缀匹配。搜 `luc 登出` 时，`luc` 匹配集合标识 `lucide` 的开头，“登出”匹配 `log-out`，可找到 `lucide:log-out` | 命中主字段的完整条件数 |
 
@@ -269,6 +271,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 - `icon-search:validate`：
   - 校验 `concepts/{phrases,words,intent}.json` 格式、必填字段、同文件中文键唯一性和跨文件同义词组一致性。
   - 按查询可匹配的字段，在当前锁定的图标包中验证 `en`、`intentEn` 和 `exclude` 的目标。只出现在集合名或 prefix 中的词不能验证为有效的概念目标。
+  - 在图标包的完整名称和别名中逐一验证 `exactNames`。
   - 校验 `official/` 下各官方快照文件及 `manifest.json` 中的 SHA-256。
 - `icon-search:build`：
   - 先运行上述校验；完全离线读取锁定 `@iconify/json` 与 `official/` 快照，计算 `indexRulesVersion`、`contentFingerprint` 与 `indexVersion`，输出压缩 JSONL 产物到 `apps/server/dist/icon-search`（不纳入 Git）。
@@ -303,6 +306,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 5. **歧义隔离与负例（约 8～12 条）**：
    - `日志` 命中 `lucide:logs` 且前排不出现 `log-out`；
    - `罐头` 不命中 `mdi:trash-can`；
+   - 验证“灯具、边界、圆角、填充、描边、轮廓、粗体／加粗、线段、直线”的含义。限定集合时，前 12 项应有切题图标，全量结果中排除仅靠绘制样式后缀命中的负例。例如 Phosphor 的“填充”应命中 `paint-bucket-fill`，并排除 `airplane-fill`。
    - 搜“文件”时，`file-icons:adobe` 和 `file-icons:npm` 仅有集合名中的 `file`，均不命中；
    - `烧瓶` 命中科学烧瓶，且 `logos:flask` 不进入 Tier 0/1 前排；
    - 搜“鼠标”时，`lucide:mouse` 等设备图标排在仅凭英文推断命中的 Emoji 之前。筛选 `emojione` 后，`computer-mouse` 和 `mouse` 都可作为相关结果出现。CLDR 标签可命中 `twemoji:computer-mouse`，搜“电脑鼠标”可直接命中其标题；

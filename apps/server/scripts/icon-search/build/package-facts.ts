@@ -105,14 +105,19 @@ export function validateConceptTargets(
   const unmatched = new Set(
     [...concepts].flatMap((concept) => conceptTargetFields.flatMap((field) => concept[field])),
   )
+  const unmatchedNames = new Set([...concepts].flatMap((concept) => concept.exactNames))
   const phraseLengths = new Set(
     [...unmatched].map((target) => target.split('-').length).filter((length) => length > 1),
   )
 
   for (const collection of collections) {
-    if (unmatched.size === 0) return
+    if (unmatched.size === 0 && unmatchedNames.size === 0) return
     const names = searchableNames(collection)
+    for (const target of unmatchedNames) {
+      if (names.has(target)) unmatchedNames.delete(target)
+    }
     for (const name of names) {
+      if (unmatched.size === 0) break
       const { terms } = deriveIconSearchName(name)
       for (const term of terms) unmatched.delete(term)
       for (const length of phraseLengths) {
@@ -120,7 +125,6 @@ export function validateConceptTargets(
           unmatched.delete(terms.slice(offset, offset + length).join('-'))
         }
       }
-      if (unmatched.size === 0) return
     }
 
     for (const [category, members] of Object.entries(collection.categories ?? {})) {
@@ -131,14 +135,17 @@ export function validateConceptTargets(
     }
   }
 
-  if (unmatched.size > 0) {
-    const invalid = [...dictionary.byKey].flatMap(([key, concept]) =>
-      conceptTargetFields.flatMap((field) =>
+  if (unmatched.size > 0 || unmatchedNames.size > 0) {
+    const invalid = [...dictionary.byKey].flatMap(([key, concept]) => [
+      ...conceptTargetFields.flatMap((field) =>
         concept[field]
           .filter((target) => unmatched.has(target))
           .map((target) => `${key}.${field}: ${target}`),
       ),
-    )
+      ...concept.exactNames
+        .filter((target) => unmatchedNames.has(target))
+        .map((target) => `${key}.exactNames: ${target}`),
+    ])
     throw new Error(`Invalid icon search concept targets:\n${invalid.join('\n')}`)
   }
 }

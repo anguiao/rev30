@@ -1,13 +1,20 @@
+import { sql } from 'drizzle-orm'
+import type { PgliteDatabase } from 'drizzle-orm/pglite'
 import type { Db } from '../../../src/db'
+import { ICON_PACKAGE_VERSION } from '../../../src/modules/icons/builtin'
 import {
   defaultIconSearchArtifactDirectory,
   iterateIconSearchArtifacts,
   readIconSearchManifest,
 } from '../../../src/modules/icons/search/artifacts/reader'
-import type { IconSearchRuntimeManifest } from '../../../src/modules/icons/search/artifacts/schema'
+import {
+  checksum,
+  type IconSearchRuntimeManifest,
+} from '../../../src/modules/icons/search/artifacts/schema'
 import { prepareIconSearchIndex } from '../../../src/modules/icons/search/indexing/lifecycle'
 import { searchIconDocuments } from '../../../src/modules/icons/search/repository'
-import { emit, measure, percentile95, type Sample } from './measure'
+import { directorySize, emit, measure, percentile95, type Sample } from './measure'
+import { searchLimit } from './search'
 
 export async function runImportBenchmark(
   database: Db,
@@ -39,46 +46,43 @@ export async function runImportBenchmark(
     periodic.push(
       search
         ? measure(sampleInput, async () =>
-            searchIconDocuments(database, { keyword: query, limit: 60 }),
+            searchIconDocuments(database, { keyword: query, limit: searchLimit }),
           )
         : measure(sampleInput, businessRequest),
     )
   }, intervalMs)
   const startedAt = performance.now()
   let manifest: IconSearchRuntimeManifest
-  let documentCount = 0
+  let elapsedMs: number
   let phaseSamples: Sample[]
   try {
     const directory = defaultIconSearchArtifactDirectory
-    const sourceManifest = await readIconSearchManifest(directory)
-    manifest = {
-      ...sourceManifest,
-      indexVersion: `${sourceManifest.indexVersion}-${phase}`,
-      searchDataVersion: `${sourceManifest.searchDataVersion}-${phase}`,
-    }
-    await prepareIconSearchIndex(database, {
-      installedIconPackageVersion: manifest.iconPackageVersion,
+    manifest = await readIconSearchManifest(directory)
+    // Import identical documents with two identities to simulate a compatible update.
+    const indexVersion =
+      phase === 'initial-import'
+        ? checksum(`${manifest.indexVersion}-benchmark`)
+        : manifest.indexVersion
+    const result = await prepareIconSearchIndex(database, {
+      installedIconPackageVersion: ICON_PACKAGE_VERSION,
       loadArtifacts: async () => ({
-        manifest,
-        documents: (async function* () {
-          for await (const document of iterateIconSearchArtifacts(directory, sourceManifest)) {
-            documentCount++
-            yield document
-          }
-        })(),
+        manifest: { ...manifest, indexVersion },
+        documents: iterateIconSearchArtifacts(directory, manifest),
       }),
     })
+    elapsedMs = performance.now() - startedAt
+    if (result !== 'updated') throw new Error(`${phase} did not import the search artifacts`)
   } finally {
     clearInterval(timer)
     phaseSamples = await Promise.all(periodic)
   }
-  const elapsedMs = performance.now() - startedAt
   emit({
     type: 'import-summary',
     phase,
     peakRss,
     peakHeapUsed,
     elapsedMs,
+    builtinDocuments: manifest.counts.documents,
     periodicRequests: phaseSamples.length,
     maxScheduledDelayMs: Math.max(...phaseSamples.map((sample) => sample.scheduledDelayMs ?? 0)),
     businessRouteEndToEndP95Ms: percentile95(
@@ -97,14 +101,14 @@ export async function runImportBenchmark(
         .map((sample) => sample.elapsedMs),
     ),
   })
-  return { manifest, documentCount }
+  return manifest
 }
 
 export async function runReuseBenchmark(database: Db, manifest: IconSearchRuntimeManifest) {
   let artifactRead = false
   const reuseStartedAt = performance.now()
   const reuse = await prepareIconSearchIndex(database, {
-    installedIconPackageVersion: manifest.iconPackageVersion,
+    installedIconPackageVersion: ICON_PACKAGE_VERSION,
     loadArtifacts: async () => ({
       manifest,
       documents: (async function* () {
@@ -118,5 +122,40 @@ export async function runReuseBenchmark(database: Db, manifest: IconSearchRuntim
     result: reuse,
     artifactRead,
     elapsedMs: performance.now() - reuseStartedAt,
+  })
+  if (reuse !== 'reused' || artifactRead)
+    throw new Error('Expected to reuse the committed search index')
+}
+
+export async function reportIndexStorage(
+  database: Pick<PgliteDatabase, 'execute'>,
+  manifest: IconSearchRuntimeManifest,
+) {
+  const result = await database.execute<{
+    documents: number
+    builtinDocuments: number
+    tableBytes: number
+    indexBytes: number
+  }>(sql`
+    SELECT count(*)::integer AS documents,
+      (count(*) FILTER (WHERE source = 'builtin'))::integer AS "builtinDocuments",
+      pg_table_size('icon_search_documents')::float8 AS "tableBytes",
+      pg_indexes_size('icon_search_documents')::float8 AS "indexBytes"
+    FROM icon_search_documents
+  `)
+  const [storage] = result.rows
+  if (storage!.builtinDocuments !== manifest.counts.documents) {
+    throw new Error(
+      'The benchmark index must contain every builtin document in the artifact manifest',
+    )
+  }
+  emit({ type: 'index-storage-summary', ...storage })
+  emit({
+    type: 'artifact-summary',
+    iconPackageVersion: manifest.iconPackageVersion,
+    indexVersion: manifest.indexVersion,
+    collections: manifest.files.length,
+    gzipBytes: manifest.files.reduce((bytes, file) => bytes + file.bytes, 0),
+    directoryBytes: await directorySize(defaultIconSearchArtifactDirectory),
   })
 }

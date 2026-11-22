@@ -1,5 +1,6 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { findPackageJSON } from 'node:module'
+import { cpus, release, tmpdir, totalmem } from 'node:os'
 import { join } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
@@ -9,11 +10,20 @@ import { relations } from '../../../src/db/relations'
 import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { createIconRoutes } from '../../../src/modules/icons/routes'
 import { browseBuiltinIcons } from '../../../src/modules/content/icon-sets/builtin/service'
-import { runImportBenchmark, runReuseBenchmark } from './indexing'
-import { directorySize, emit, measure, percentile95 } from './measure'
-import { runBurstBenchmark, runPaginationBenchmark, runSearchBenchmark } from './search'
+import {
+  getRuntimeIconSearchConcepts,
+  initializeRuntimeIconSearchConcepts,
+} from '../../../src/modules/icons/search/runtime-concepts'
+import { reportIndexStorage, runImportBenchmark, runReuseBenchmark } from './indexing'
+import { assertLatencyTargets, directorySize, emit, measure, percentile95 } from './measure'
+import {
+  runBurstBenchmark,
+  runSearchBenchmark,
+  searchLimit,
+  verifyTierZeroQueryPlan,
+} from './search'
 
-const requestedSamples = Number.parseInt(process.argv[2] ?? '60', 10)
+const requestedSamples = Number(process.argv[2] ?? 60)
 if (!Number.isSafeInteger(requestedSamples) || requestedSamples < 1) {
   throw new Error('Sample count must be a positive integer')
 }
@@ -23,6 +33,23 @@ const client = new PGlite(dataDirectory)
 
 try {
   await client.waitReady
+  const logicalCpus = cpus()
+  const pglitePackagePath = findPackageJSON('@electric-sql/pglite', import.meta.url)
+  const { version: pgliteVersion } = JSON.parse(await readFile(pglitePackagePath!, 'utf8')) as {
+    version: string
+  }
+  const postgres = await client.query<{ version: string }>('SELECT version()')
+  emit({
+    type: 'environment-summary',
+    cpu: logicalCpus[0]?.model,
+    logicalCpuCount: logicalCpus.length,
+    memoryBytes: totalmem(),
+    platform: `${process.platform}-${process.arch}`,
+    osRelease: release(),
+    node: process.version,
+    pglite: pgliteVersion,
+    postgres: postgres.rows[0]!.version,
+  })
   const memoryEmptyPglite = process.memoryUsage()
   const diskEmptyPgliteBytes = await directorySize(dataDirectory)
   await migratePGlite(client)
@@ -63,9 +90,10 @@ try {
   const emptyBaseline: number[] = []
   for (let index = 0; index < requestedSamples; index += 1) {
     const startedAt = performance.now()
-    const result = await browseBuiltinIcons({ keyword: '', pageSize: 60 })
+    const result = await browseBuiltinIcons({ keyword: '', pageSize: searchLimit })
     emptyBaseline.push(performance.now() - startedAt)
-    if (result.list.length !== 60) throw new Error('Empty browse baseline returned too few icons')
+    if (result.list.length !== searchLimit)
+      throw new Error('Empty browse baseline returned too few icons')
   }
   emit({
     type: 'baseline-summary',
@@ -76,22 +104,24 @@ try {
   const memoryBusinessBaseline = process.memoryUsage()
   const diskBusinessBaselineBytes = await directorySize(dataDirectory)
 
-  const initialImport = await runImportBenchmark(database, 'initial-import', businessRequest)
+  await initializeRuntimeIconSearchConcepts()
+  emit({
+    type: 'dictionary-summary',
+    queryRulesVersion: getRuntimeIconSearchConcepts().queryRulesVersion,
+  })
+  await runImportBenchmark(database, 'initial-import', businessRequest)
   const memoryAfterInitialImport = process.memoryUsage()
-  const versionUpdate = await runImportBenchmark(database, 'version-update', businessRequest)
+  const manifest = await runImportBenchmark(database, 'version-update', businessRequest)
   const memoryAfterVersionUpdate = process.memoryUsage()
+  await runReuseBenchmark(database, manifest)
+  await reportIndexStorage(database, manifest)
 
-  await runReuseBenchmark(database, versionUpdate.manifest)
-
-  await runSearchBenchmark(database, requestedSamples)
-  await runPaginationBenchmark(database, requestedSamples)
-  await runBurstBenchmark(database, requestedSamples)
+  const queries = await runSearchBenchmark(database, requestedSamples)
+  const burst = await runBurstBenchmark(database, requestedSamples)
+  await verifyTierZeroQueryPlan(database)
 
   emit({
-    type: 'environment-summary',
-    node: process.version,
-    platform: `${process.platform}-${process.arch}`,
-    documents: initialImport.documentCount,
+    type: 'resource-summary',
     memoryEmptyPglite,
     diskEmptyPgliteBytes,
     memoryBusinessBaseline,
@@ -101,6 +131,7 @@ try {
     memoryAfterBenchmark: process.memoryUsage(),
     diskBytes: await directorySize(dataDirectory),
   })
+  assertLatencyTargets(queries, burst)
 } finally {
   await client.close()
   await rm(dataDirectory, { recursive: true })

@@ -9,6 +9,21 @@ export type Sample = {
   scheduledDelayMs?: number
 }
 
+export type QueryLatency = {
+  kind: string
+  query: string
+  page?: number
+  p95Ms: number
+}
+
+export type BurstLatency = {
+  batchP95Ms: number
+  requestP95Ms: number
+}
+
+export const searchP95LimitMs = 50
+export const burstP95LimitMs = 200
+
 export function emit(value: object) {
   process.stdout.write(`${JSON.stringify(value)}\n`)
 }
@@ -16,6 +31,21 @@ export function emit(value: object) {
 export function percentile95(values: number[]) {
   const sorted = [...values].sort((left, right) => left - right)
   return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? 0
+}
+
+export function assertLatencyTargets(queries: readonly QueryLatency[], burst: BurstLatency) {
+  const failures = queries
+    .filter(({ p95Ms }) => p95Ms > searchP95LimitMs)
+    .map(({ kind, query, page, p95Ms }) => {
+      const location = page ? ` (page ${page})` : ''
+      return `${kind} ${JSON.stringify(query)}${location} P95 ${p95Ms.toFixed(3)} ms exceeds ${searchP95LimitMs} ms`
+    })
+  if (burst.batchP95Ms > burstP95LimitMs) {
+    failures.push(
+      `10-request burst P95 ${burst.batchP95Ms.toFixed(3)} ms exceeds ${burstP95LimitMs} ms`,
+    )
+  }
+  if (failures.length) throw new Error(failures.join('\n'))
 }
 
 export async function directorySize(path: string): Promise<number> {

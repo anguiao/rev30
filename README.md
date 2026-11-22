@@ -43,9 +43,18 @@ pnpm dev
 
 ### 图标搜索
 
-图标选择器和内容管理图标库共用数据库搜索索引。内置图标数据来自 `@iconify/json` 和[中文维护数据](apps/server/resources/icon-search/README.md)，自定义图标使用名称及关键词参与搜索。
+图标选择器和内容管理图标库共用数据库搜索索引。可以用中文同义词、图标用途或中英组合搜索。搜索“通知”可找到通知图标和铃铛。自定义图标按名称和关键词匹配。
 
-首次开发、搜索产物缺失，或图标包及维护数据变更后，运行 `pnpm --filter @rev30/server icon-search:build` 并重启服务；发布构建会自动生成搜索产物。索引更新需要交换 `icon_search_documents` 与 `icon_search_documents_staging` 及其索引，生产数据库连接角色必须拥有这些对象。
+仅更新中文查询词典时，重启服务即可生效并复用现有数据库索引。搜索产物缺失或图标包、官方中文快照、索引规则发生变更时，运行 `pnpm --filter @rev30/server icon-search:build` 并重启服务。发布构建会自动生成搜索产物。详见[图标搜索维护说明](apps/server/resources/icon-search/README.md)。
+
+从旧版搜索索引升级到当前格式时，在启动服务前应用随版本提供的数据库迁移。索引更新需要交换 `icon_search_documents` 与 `icon_search_documents_staging` 及其索引，生产数据库连接角色必须拥有这些对象。
+
+构建索引产物后，可以使用全量 PGlite 索引运行固定回归和性能验收。
+
+```bash
+pnpm --filter @rev30/server icon-search:regression
+pnpm --filter @rev30/server icon-search:benchmark
+```
 
 ### 系统配置
 

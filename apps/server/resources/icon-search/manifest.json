@@ -2,6 +2,64 @@
   "formatVersion": 2,
   "iconPackageVersion": "2.2.525",
   "dataVersion": "chinese-9",
+  "official": {
+    "icon-park.json": {
+      "checksum": "4353871fa3652e1c4a3f5a31298a828c394f44b1984f5a5faca32f94d3e19a18",
+      "sources": [
+        {
+          "project": "ByteDance IconPark",
+          "version": "8dc132da4c85671ba6a5962c87aa2bdafbf158e9",
+          "url": "https://raw.githubusercontent.com/bytedance/IconPark/8dc132da4c85671ba6a5962c87aa2bdafbf158e9/packages/svg/icons.json",
+          "checksum": "60fc9b4fd64cc6ab0a83956ecd6f513822bbddb937e93328cd683c0e38eeff6b"
+        }
+      ]
+    },
+    "remix-icon.json": {
+      "checksum": "27ee588c3034ac9076bd8605a723a21af8c24e33daaff858d442674f7c6dadb7",
+      "sources": [
+        {
+          "project": "RemixIcon",
+          "version": "v4.8.0",
+          "url": "https://raw.githubusercontent.com/Remix-Design/RemixIcon/8e543a8983790c20d7d8c696ae74023c69f379b7/tags.json",
+          "checksum": "cab63cd51f7efff82b19ead3bb06aacd2a6b938718c0ee1b34aa0e9dac53d1df"
+        }
+      ]
+    },
+    "cldr-emoji.json": {
+      "checksum": "6b330ecbc9a90f90d186f8f790a8c6449a86263a5a639dc3368cebf388f0902b",
+      "sources": [
+        {
+          "project": "Unicode CLDR",
+          "version": "release-48",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/annotations/zh.xml",
+          "checksum": "92389f71659998736530c72d4dcc86e453fe0be170cde5c5ad27094cab2a2de8"
+        },
+        {
+          "project": "Unicode CLDR",
+          "version": "release-48",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/annotationsDerived/zh.xml",
+          "checksum": "777acebb7c4ed103c34f5605881a2537656e0a17d9d1127518da7cd54f612bcc"
+        }
+      ]
+    },
+    "iso-flags.json": {
+      "checksum": "b9dcf4d33f2874317a7c783aa094b5fd6bfcca920f2496274b9da22c19d85e33",
+      "sources": [
+        {
+          "project": "Unicode CLDR",
+          "version": "release-48",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/zh.xml",
+          "checksum": "b1ef8bcadcf19fa8914d9ba812a7bcec124c72fecbf4acea02e4c8bd2fe51866"
+        },
+        {
+          "project": "Unicode CLDR",
+          "version": "release-48",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/validity/region.xml",
+          "checksum": "e751e0eedd46b52c38f3cdb72b0fab61ac8b48e052e8b28ba74b6ac26c4c8cb1"
+        }
+      ]
+    }
+  },
   "files": [
     {
       "kind": "translations",

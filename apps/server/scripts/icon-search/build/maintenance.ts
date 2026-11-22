@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { normalizeSearchText } from '@rev30/utils'
 
 import { deriveSearchText } from '../../../src/modules/icons/search/text'
+import { officialSnapshotManifestSchema } from '../official/manifest'
 
 const translationSchema = z
   .string()
@@ -25,6 +26,7 @@ const maintainedManifestSchema = z
     iconPackageVersion: z.string().min(1),
     dataVersion: z.string().min(1),
     files: z.array(maintainedFileSchema),
+    official: officialSnapshotManifestSchema.optional(),
   })
   .strict()
 

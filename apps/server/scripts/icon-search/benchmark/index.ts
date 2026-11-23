@@ -11,9 +11,9 @@ import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { createIconRoutes } from '../../../src/modules/icons/routes'
 import { browseBuiltinIcons } from '../../../src/modules/content/icon-sets/builtin/service'
 import {
-  getRuntimeIconSearchConcepts,
-  initializeRuntimeIconSearchConcepts,
-} from '../../../src/modules/icons/search/runtime-concepts'
+  getIconSearchDictionary,
+  loadIconSearchDictionary,
+} from '../../../src/modules/icons/search/dictionary'
 import { reportIndexStorage, runImportBenchmark, runReuseBenchmark } from './indexing'
 import { assertLatencyTargets, directorySize, emit, measure, percentile95 } from './measure'
 import {
@@ -104,10 +104,10 @@ try {
   const memoryBusinessBaseline = process.memoryUsage()
   const diskBusinessBaselineBytes = await directorySize(dataDirectory)
 
-  await initializeRuntimeIconSearchConcepts()
+  await loadIconSearchDictionary()
   emit({
     type: 'dictionary-summary',
-    queryRulesVersion: getRuntimeIconSearchConcepts().queryRulesVersion,
+    queryRulesVersion: getIconSearchDictionary().queryRulesVersion,
   })
   await runImportBenchmark(database, 'initial-import', businessRequest)
   const memoryAfterInitialImport = process.memoryUsage()

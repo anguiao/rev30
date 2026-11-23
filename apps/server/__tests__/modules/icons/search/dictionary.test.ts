@@ -7,9 +7,9 @@ import { build } from 'tsup'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { IconSearchUnavailableError } from '../../../../src/modules/icons/errors'
 import {
-  getRuntimeIconSearchConcepts,
-  initializeRuntimeIconSearchConcepts,
-} from '../../../../src/modules/icons/search/runtime-concepts'
+  getIconSearchDictionary,
+  loadIconSearchDictionary,
+} from '../../../../src/modules/icons/search/dictionary'
 
 async function writeConcepts(directory: string, target: string) {
   await mkdir(directory, { recursive: true })
@@ -28,17 +28,17 @@ async function createPackagedConcepts() {
   return { serverDirectory, packagedDirectory }
 }
 
-describe('runtime icon search concepts', () => {
+describe('icon search dictionary', () => {
   it('loads the maintained development dictionary from the source tree', async () => {
-    await initializeRuntimeIconSearchConcepts()
+    await loadIconSearchDictionary()
 
-    expect(getRuntimeIconSearchConcepts().byKey.get('登出')?.en).toContain('log-out')
+    expect(getIconSearchDictionary().byKey.get('登出')?.en).toContain('log-out')
   })
 
   it('loads the published dictionary from a renamed entry with a nested shared chunk', async () => {
     const { serverDirectory, packagedDirectory } = await createPackagedConcepts()
     await writeConcepts(join(serverDirectory, 'resources/icon-search/concepts'), 'home')
-    const entry = 'src/modules/icons/search/runtime-concepts.ts'
+    const entry = 'src/modules/icons/search/dictionary.ts'
     await build({
       config: 'tsup.config.ts',
       entry: { server: entry, worker: entry },
@@ -58,9 +58,9 @@ describe('runtime icon search concepts', () => {
         [
           '--input-type=module',
           '--eval',
-          `import { initializeRuntimeIconSearchConcepts, getRuntimeIconSearchConcepts } from './dist/server.mjs'
-           await initializeRuntimeIconSearchConcepts()
-           console.log(getRuntimeIconSearchConcepts().byKey.get('首页').en[0])`,
+          `import { loadIconSearchDictionary, getIconSearchDictionary } from './dist/server.mjs'
+           await loadIconSearchDictionary()
+           console.log(getIconSearchDictionary().byKey.get('首页').en[0])`,
         ],
         { cwd: serverDirectory, env: { ...process.env, NODE_ENV: 'development' } },
       )
@@ -71,15 +71,15 @@ describe('runtime icon search concepts', () => {
 
   it('loads the packaged dictionary once per startup and versions edits on restart', async () => {
     const { packagedDirectory } = await createPackagedConcepts()
-    await initializeRuntimeIconSearchConcepts(packagedDirectory)
-    const original = getRuntimeIconSearchConcepts()
+    await loadIconSearchDictionary(packagedDirectory)
+    const original = getIconSearchDictionary()
     expect(original.byKey.get('首页')?.en).toEqual(['house'])
 
     await writeConcepts(packagedDirectory, 'home')
-    expect(getRuntimeIconSearchConcepts()).toBe(original)
+    expect(getIconSearchDictionary()).toBe(original)
 
-    await initializeRuntimeIconSearchConcepts(packagedDirectory)
-    const updated = getRuntimeIconSearchConcepts()
+    await loadIconSearchDictionary(packagedDirectory)
+    const updated = getIconSearchDictionary()
     expect(updated.byKey.get('首页')?.en).toEqual(['home'])
     expect(updated.queryRulesVersion).not.toBe(original.queryRulesVersion)
   })
@@ -89,15 +89,13 @@ describe('runtime icon search concepts', () => {
     async (problem) => {
       const { serverDirectory, packagedDirectory } = await createPackagedConcepts()
       await writeConcepts(join(serverDirectory, 'resources/icon-search/concepts'), 'home')
-      await initializeRuntimeIconSearchConcepts(packagedDirectory)
+      await loadIconSearchDictionary(packagedDirectory)
 
       const wordsFile = join(packagedDirectory, 'words.json')
       if (problem === 'missing') await rm(wordsFile)
       else await writeFile(wordsFile, ']')
-      await expect(initializeRuntimeIconSearchConcepts(packagedDirectory)).rejects.toThrow(
-        /words\.json/,
-      )
-      expect(() => getRuntimeIconSearchConcepts()).toThrow(IconSearchUnavailableError)
+      await expect(loadIconSearchDictionary(packagedDirectory)).rejects.toThrow(/words\.json/)
+      expect(() => getIconSearchDictionary()).toThrow(IconSearchUnavailableError)
     },
   )
 })

@@ -5,7 +5,7 @@ import { createDb } from './db'
 import { readAttachmentConfig } from './modules/attachments/config'
 import { createAttachmentStorage } from './modules/attachments/storage'
 import { startIconSearchIndexPreparation } from './modules/icons/search/indexing/lifecycle'
-import { startIconSearchConcepts } from './modules/icons/search/runtime-concepts'
+import { initializeIconSearchDictionary } from './modules/icons/search/dictionary'
 import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/config'
 import { startScheduledJobs } from './modules/ops/scheduled-jobs/startup'
 import { logger } from './runtime/logger'
@@ -26,7 +26,7 @@ const scheduledJobs = await startScheduledJobs({
   retention: scheduledJobRetention,
 })
 const operationLog = createOperationLogRuntime(db, logger)
-await startIconSearchConcepts(logger)
+await initializeIconSearchDictionary(logger)
 const iconSearchPreparation = startIconSearchIndexPreparation(db, logger)
 
 const app = createApp(db, {

@@ -20,7 +20,7 @@ import { prepareIconSearchIndex } from '../../../src/modules/icons/search/indexi
 import { getCommittedIconSearchState } from '../../../src/modules/icons/search/indexing/state'
 import type { RankedIconSearchRow } from '../../../src/modules/icons/search/ranked-rows'
 import { searchIconDocuments } from '../../../src/modules/icons/search/repository'
-import { initializeRuntimeIconSearchConcepts } from '../../../src/modules/icons/search/runtime-concepts'
+import { loadIconSearchDictionary } from '../../../src/modules/icons/search/dictionary'
 import { createIconSearchService } from '../../../src/modules/icons/search/service'
 import { adminCases, variantCases } from './cases'
 import englishBaseline from './english-baseline.json' with { type: 'json' }
@@ -51,7 +51,7 @@ const customIcons = [
 before(async () => {
   const directory = defaultIconSearchArtifactDirectory
   const manifest = await readIconSearchManifest(directory)
-  await initializeRuntimeIconSearchConcepts()
+  await loadIconSearchDictionary()
   await migratePGlite(client)
 
   const [set] = await database

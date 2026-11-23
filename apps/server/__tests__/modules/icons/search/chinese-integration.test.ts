@@ -10,7 +10,7 @@ import { iconSearchResourcesDirectory } from '../../../../scripts/icon-search/bu
 import { loadOfficialIconSearchData } from '../../../../scripts/icon-search/official/load'
 import { createCustomIconSetService } from '../../../../src/modules/content/icon-sets/custom/service'
 import type { IconSearchFacts } from '../../../../src/modules/icons/search/facts'
-import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
+import { loadIconSearchDictionary } from '../../../../src/modules/icons/search/dictionary'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
 import { dbTest } from '../../../fixtures/database'
 import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
@@ -71,7 +71,7 @@ beforeAll(async () => {
   const [iconPackage, official] = await Promise.all([
     loadIconPackage(),
     loadOfficialIconSearchData(iconSearchResourcesDirectory),
-    initializeRuntimeIconSearchConcepts(),
+    loadIconSearchDictionary(),
   ])
   const prefixes = new Set([...builtinIds].map((id) => id.slice(0, id.indexOf(':'))))
   facts = iconPackage.collections

@@ -12,14 +12,14 @@ import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custo
 import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
 import { prepareIconSearchIndex } from '../../../../../src/modules/icons/search/indexing/lifecycle'
 import { setIconSearchStatus } from '../../../../../src/modules/icons/search/indexing/state'
-import { initializeRuntimeIconSearchConcepts } from '../../../../../src/modules/icons/search/runtime-concepts'
+import { loadIconSearchDictionary } from '../../../../../src/modules/icons/search/dictionary'
 import { IconSearchUnavailableError } from '../../../../../src/modules/icons/errors'
 import { dbTest } from '../../../../fixtures/database'
 
 const svg = '<svg viewBox="0 0 24 24"><path d="M0 0h10v10H0z" /></svg>'
 
 describe('custom icon search synchronization', () => {
-  beforeAll(() => initializeRuntimeIconSearchConcepts())
+  beforeAll(() => loadIconSearchDictionary())
 
   dbTest('gates non-empty search while normalized blank input still browses', async ({ db }) => {
     onTestFinished(() => setIconSearchStatus('ready'))

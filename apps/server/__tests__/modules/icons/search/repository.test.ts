@@ -15,7 +15,7 @@ import {
 import { searchIconDocuments } from '../../../../src/modules/icons/search/repository'
 import { deriveCustomIconSearchFacts } from '../../../../src/modules/icons/search/facts'
 import { prepareIconSearchIndex } from '../../../../src/modules/icons/search/indexing/lifecycle'
-import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
+import { loadIconSearchDictionary } from '../../../../src/modules/icons/search/dictionary'
 import { dbTest } from '../../../fixtures/database'
 import { InvalidIconCursorError } from '../../../../src/modules/icons/errors'
 
@@ -38,7 +38,7 @@ const fixtures = [
 const state = { ...testIconSearchState, indexVersion: 'index-v1', iconPackageVersion: 'icons-v1' }
 
 describe('database icon search', () => {
-  beforeAll(() => initializeRuntimeIconSearchConcepts())
+  beforeAll(() => loadIconSearchDictionary())
 
   dbTest(
     'paginates Chinese primary-field priorities without changing AND matching or exact tiers',
@@ -242,7 +242,7 @@ describe('database icon search', () => {
 
       const directory = await mkdtemp(join(tmpdir(), 'icon-search-cursor-rules-'))
       onTestFinished(async () => {
-        await initializeRuntimeIconSearchConcepts()
+        await loadIconSearchDictionary()
         await rm(directory, { recursive: true, force: true })
       })
       await Promise.all([
@@ -250,7 +250,7 @@ describe('database icon search', () => {
         writeFile(join(directory, 'phrases.json'), '[]'),
         writeFile(join(directory, 'intent.json'), '[]'),
       ])
-      await initializeRuntimeIconSearchConcepts(directory)
+      await loadIconSearchDictionary(directory)
       const iterate = vi.fn(function* () {
         yield builtinSearchFacts('lucide', 'camera')
       })

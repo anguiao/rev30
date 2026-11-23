@@ -4,9 +4,9 @@ import { dbTest } from '../../../../fixtures/database'
 import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
 
 async function loadBuiltinIconSearchService() {
-  const { initializeRuntimeIconSearchConcepts } =
-    await import('../../../../../src/modules/icons/search/runtime-concepts')
-  await initializeRuntimeIconSearchConcepts()
+  const { loadIconSearchDictionary } =
+    await import('../../../../../src/modules/icons/search/dictionary')
+  await loadIconSearchDictionary()
   return import('../../../../../src/modules/content/icon-sets/builtin/service')
 }
 

@@ -2,11 +2,11 @@ import { beforeAll, describe, expect } from 'vitest'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
 import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { IconSearchPreparingError } from '../../../../src/modules/icons/errors'
-import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
+import { loadIconSearchDictionary } from '../../../../src/modules/icons/search/dictionary'
 import { dbTest } from '../../../fixtures/database'
 
 describe('unified icon search service', () => {
-  beforeAll(() => initializeRuntimeIconSearchConcepts())
+  beforeAll(() => loadIconSearchDictionary())
 
   dbTest('serves limited recommendations in order without a committed index', async ({ db }) => {
     const result = await createIconSearchService(db).searchIcons({ keyword: '   ', limit: 3 })

@@ -4,7 +4,7 @@ import type { Db } from '../../../src/db'
 import { planIconSearchQuery } from '../../../src/modules/icons/search/planner'
 import { findRankedIconSearchRows } from '../../../src/modules/icons/search/ranked-rows'
 import { searchIconDocuments } from '../../../src/modules/icons/search/repository'
-import { getRuntimeIconSearchConcepts } from '../../../src/modules/icons/search/runtime-concepts'
+import { getIconSearchDictionary } from '../../../src/modules/icons/search/dictionary'
 import { burstP95LimitMs, emit, percentile95, searchP95LimitMs, type QueryLatency } from './measure'
 
 export const searchLimit = 60
@@ -54,7 +54,7 @@ export async function runSearchBenchmark(database: Db, requestedSamples: number)
   const slowestByKind = new Map<string, QueryLatency>()
   for (const { kind, query, page, conceptTargets } of cases) {
     if (conceptTargets) {
-      const plan = planIconSearchQuery(query, getRuntimeIconSearchConcepts())
+      const plan = planIconSearchQuery(query, getIconSearchDictionary())
       if (plan.kind !== 'chinese' || !plan.exactConcept?.[conceptTargets].length) {
         throw new Error(`${query} must have ${conceptTargets} in the runtime dictionary`)
       }
@@ -166,7 +166,7 @@ export async function runBurstBenchmark(database: Db, requestedSamples: number) 
 
 export async function verifyTierZeroQueryPlan(database: Pick<PgliteDatabase, 'execute'>) {
   const query = '铃铛'
-  const plan = planIconSearchQuery(query, getRuntimeIconSearchConcepts())
+  const plan = planIconSearchQuery(query, getIconSearchDictionary())
   let statement: SQLWrapper | string | undefined
   await findRankedIconSearchRows(
     {

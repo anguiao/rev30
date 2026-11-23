@@ -25,9 +25,9 @@ import { customIconSetIcons, iconSearchDocuments } from '../../../../src/db/sche
 import { formatIconSearchCursor } from '../../../../src/modules/icons/cursor'
 import { setIconSearchStatus } from '../../../../src/modules/icons/search/indexing/state'
 import {
-  getRuntimeIconSearchConcepts,
-  initializeRuntimeIconSearchConcepts,
-} from '../../../../src/modules/icons/search/runtime-concepts'
+  getIconSearchDictionary,
+  loadIconSearchDictionary,
+} from '../../../../src/modules/icons/search/dictionary'
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -44,7 +44,7 @@ function createOperationLogReceiver(events: OperationLogEvent[]) {
 }
 
 describe('icon set routes', () => {
-  beforeAll(() => initializeRuntimeIconSearchConcepts())
+  beforeAll(() => loadIconSearchDictionary())
 
   afterEach(() => {
     vi.restoreAllMocks()
@@ -56,10 +56,10 @@ describe('icon set routes', () => {
       const directory = await mkdtemp(join(tmpdir(), 'icon-search-missing-concepts-'))
       onTestFinished(async () => {
         setIconSearchStatus('ready')
-        await initializeRuntimeIconSearchConcepts()
+        await loadIconSearchDictionary()
         await rm(directory, { recursive: true, force: true })
       })
-      await expect(initializeRuntimeIconSearchConcepts(directory)).rejects.toThrow(/ENOENT/)
+      await expect(loadIconSearchDictionary(directory)).rejects.toThrow(/ENOENT/)
       setIconSearchStatus('preparing')
       const { authHeaders: headers } = await createSystemAccessFixture(db, {
         accessCodes: ['content:icon-set:list'],
@@ -262,7 +262,7 @@ describe('icon set routes', () => {
         usernamePrefix: 'icon-set-cursor-range-user',
       })
       await replaceIconSearchDocuments(db, [])
-      const { queryRulesVersion } = getRuntimeIconSearchConcepts()
+      const { queryRulesVersion } = getIconSearchDictionary()
       const cursor = formatIconSearchCursor(
         {
           source,

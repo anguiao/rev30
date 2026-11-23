@@ -8,7 +8,7 @@ import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import { createIconRoutes } from '../../../../src/modules/icons/routes'
 import { builtinSearchFacts, replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { deriveCustomIconSearchFacts } from '../../../../src/modules/icons/search/facts'
-import { initializeRuntimeIconSearchConcepts } from '../../../../src/modules/icons/search/runtime-concepts'
+import { loadIconSearchDictionary } from '../../../../src/modules/icons/search/dictionary'
 
 vi.mock('@iconify/json', () => ({
   lookupCollections: vi.fn(async () => ({
@@ -33,7 +33,7 @@ function createIconSearchTestApp(database: TestDatabase) {
 }
 
 describe('icon search routes', () => {
-  beforeAll(() => initializeRuntimeIconSearchConcepts())
+  beforeAll(() => loadIconSearchDictionary())
 
   dbTest(
     'returns an explicit preparing status for authenticated non-empty searches',

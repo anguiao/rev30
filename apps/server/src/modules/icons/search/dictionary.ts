@@ -15,19 +15,19 @@ const defaultConceptsDirectory =
 type ConceptStartup = { dictionary?: IconSearchConceptDictionary }
 let activeStartup: ConceptStartup = {}
 
-export async function initializeRuntimeIconSearchConcepts(directory = defaultConceptsDirectory) {
+export async function loadIconSearchDictionary(directory = defaultConceptsDirectory) {
   const startup: ConceptStartup = {}
   activeStartup = startup
   startup.dictionary = await loadIconSearchConcepts(directory)
 }
 
-export function startIconSearchConcepts(logger: Pick<Logger, 'error'>) {
-  return initializeRuntimeIconSearchConcepts().catch((error: unknown) => {
+export function initializeIconSearchDictionary(logger: Pick<Logger, 'error'>) {
+  return loadIconSearchDictionary().catch((error: unknown) => {
     logger.error({ err: error }, 'icon search concept dictionary initialization failed')
   })
 }
 
-export function getRuntimeIconSearchConcepts(): IconSearchConceptDictionary {
+export function getIconSearchDictionary(): IconSearchConceptDictionary {
   if (!activeStartup.dictionary) throw new IconSearchUnavailableError()
   return activeStartup.dictionary
 }

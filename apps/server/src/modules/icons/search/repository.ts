@@ -7,7 +7,7 @@ import type { IconSearchMetadata } from './facts'
 import { assertIconSearchAvailable, getCommittedIconSearchState } from './indexing/state'
 import { planIconSearchQuery } from './planner'
 import { findRankedIconSearchRows } from './ranked-rows'
-import { getRuntimeIconSearchConcepts } from './runtime-concepts'
+import { getIconSearchDictionary } from './dictionary'
 
 type SearchOptions = IconSearchQuery & {
   source?: IconSearchMetadata['source']
@@ -19,7 +19,7 @@ export async function searchIconDocuments(
   database: Db,
   { keyword, source, prefix, cursor, limit }: SearchOptions,
 ) {
-  const dictionary = getRuntimeIconSearchConcepts()
+  const dictionary = getIconSearchDictionary()
   assertIconSearchAvailable()
   const plan = planIconSearchQuery(keyword, dictionary)
   const { rows, cursorOptions } = await database.transaction(

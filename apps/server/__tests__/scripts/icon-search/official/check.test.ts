@@ -2,10 +2,12 @@ import { execFileSync } from 'node:child_process'
 import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, it, vi } from 'vitest'
-import { iconSearchResourcesDirectory } from '../../../../scripts/icon-search/build/maintenance'
 import { checkOfficialUpdates } from '../../../../scripts/icon-search/official/check'
 import { generateSnapshot } from '../../../../scripts/icon-search/official/generate'
-import { maintainedManifestSchema } from '../../../../scripts/icon-search/official/manifest'
+import {
+  iconSearchResourcesDirectory,
+  parseIconSearchResourceManifest,
+} from '../../../../scripts/icon-search/resource-manifest'
 import {
   latestRelease,
   type OfficialRevisions,
@@ -53,7 +55,7 @@ it('checks upstream on each dependency update and produces a patch only until it
   await cp(iconSearchResourcesDirectory, resources, { recursive: true })
   const manifestPath = join(resources, 'manifest.json')
   const original = await readFile(manifestPath, 'utf8')
-  const manifest = maintainedManifestSchema.parse(JSON.parse(original))
+  const manifest = parseIconSearchResourceManifest(original)
   function pinned(name: keyof OfficialRevisions): Revision {
     const source = manifest.official[name].sources[0]!
     const [, owner, repo, commit] = new URL(source.url).pathname.split('/')

@@ -1,4 +1,5 @@
-import { iconSearchResourcesDirectory, loadMaintainedSearchData } from './maintenance'
+import { iconSearchResourcesDirectory } from '../resource-manifest'
+import { loadMaintainedSearchData } from './maintenance'
 import { loadIconPackage } from './package-source'
 
 const iconPackage = await loadIconPackage()

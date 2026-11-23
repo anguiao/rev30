@@ -2,14 +2,18 @@ import { lookupCollection } from '@iconify/json'
 import { appendFile, cp, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { expect, it, onTestFinished, vi } from 'vitest'
 
 import { loadOfficialIconSearchData } from '../../../../scripts/icon-search/official/load'
+import {
+  iconSearchResourcesDirectory,
+  readIconSearchResourceManifest,
+} from '../../../../scripts/icon-search/resource-manifest'
 
-const resourcesDirectory = fileURLToPath(
-  new URL('../../../../resources/icon-search', import.meta.url),
-)
+async function loadSnapshots(directory = iconSearchResourcesDirectory) {
+  const manifest = await readIconSearchResourceManifest(directory)
+  return loadOfficialIconSearchData(directory, manifest.official)
+}
 
 it('loads IconPark titles and separate RemixIcon search labels offline', async () => {
   const fetch = vi.fn(() => {
@@ -20,7 +24,7 @@ it('loads IconPark titles and separate RemixIcon search labels offline', async (
     vi.unstubAllGlobals()
   })
 
-  const official = await loadOfficialIconSearchData(resourcesDirectory)
+  const official = await loadSnapshots()
   expect(official.checksums).toHaveLength(4)
   for (const prefix of ['icon-park', 'icon-park-outline', 'icon-park-solid', 'icon-park-twotone']) {
     const lookup = official.forCollection({ prefix })
@@ -40,7 +44,7 @@ it('loads IconPark titles and separate RemixIcon search labels offline', async (
 })
 
 it('uses CLDR short names and keywords for the exact Emoji character sequences', async () => {
-  const official = await loadOfficialIconSearchData(resourcesDirectory)
+  const official = await loadSnapshots()
   const { prefix, chars } = await lookupCollection('twemoji')
   const emoji = official.forCollection({ prefix, category: 'Emoji', chars })
 
@@ -68,7 +72,7 @@ it('uses CLDR short names and keywords for the exact Emoji character sequences',
 })
 
 it('matches flag names and canvas variants to exact region codes and CLDR short names', async () => {
-  const official = await loadOfficialIconSearchData(resourcesDirectory)
+  const official = await loadSnapshots()
   const flag = official.forCollection({ prefix: 'flag' })
   const circle = official.forCollection({ prefix: 'circle-flags' })
   const flagpack = official.forCollection({ prefix: 'flagpack' })
@@ -91,12 +95,14 @@ it('rejects a snapshot whose bytes no longer match its recorded SHA-256', async 
   const directory = await mkdtemp(join(tmpdir(), 'icon-search-official-'))
   onTestFinished(() => rm(directory, { recursive: true, force: true }))
   await Promise.all([
-    cp(join(resourcesDirectory, 'manifest.json'), join(directory, 'manifest.json')),
-    cp(join(resourcesDirectory, 'official'), join(directory, 'official'), { recursive: true }),
+    cp(join(iconSearchResourcesDirectory, 'manifest.json'), join(directory, 'manifest.json')),
+    cp(join(iconSearchResourcesDirectory, 'official'), join(directory, 'official'), {
+      recursive: true,
+    }),
   ])
   await appendFile(join(directory, 'official/icon-park.json'), ' ')
 
-  await expect(loadOfficialIconSearchData(directory)).rejects.toThrow(
+  await expect(loadSnapshots(directory)).rejects.toThrow(
     'Official snapshot checksum mismatch: official/icon-park.json',
   )
 })

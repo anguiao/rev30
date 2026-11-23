@@ -3,15 +3,16 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { checksum } from '../../../src/modules/icons/search/artifacts/schema'
-import { iconSearchResourcesDirectory } from '../build/maintenance'
+import {
+  iconSearchResourcesDirectory,
+  officialSnapshotNames,
+  parseIconSearchResourceManifest,
+  readIconSearchResourceManifest,
+  type IconSearchResourceManifest,
+  type OfficialSnapshotName,
+} from '../resource-manifest'
 import { formatResourceJson, generateSnapshot } from './generate'
 import { loadOfficialIconSearchData } from './load'
-import {
-  maintainedManifestSchema,
-  officialSnapshotNames,
-  type MaintainedManifest,
-  type SnapshotName,
-} from './manifest'
 import {
   discoverOfficialRevisions,
   downloadSource,
@@ -23,11 +24,11 @@ const resourcePath = 'apps/server/resources/icon-search'
 const noticePath = 'official/THIRD_PARTY_NOTICES.txt'
 
 async function writeCandidateNotices(
-  manifest: MaintainedManifest,
+  manifest: IconSearchResourceManifest,
   directory: string,
   download: typeof downloadSource,
 ) {
-  const notices = new Map<string, { project: string; names: SnapshotName[] }>()
+  const notices = new Map<string, { project: string; names: OfficialSnapshotName[] }>()
   for (const name of officialSnapshotNames) {
     const source = manifest.official[name].sources[0]!
     const url = new URL(source.url)
@@ -48,13 +49,16 @@ async function writeCandidateNotices(
 }
 
 async function generateCandidate(
-  manifest: MaintainedManifest,
+  manifest: IconSearchResourceManifest,
   revisions: OfficialRevisions,
   directory: string,
   download: typeof downloadSource,
 ) {
   const changedProjects = new Set<string>()
-  const updated = new Map<SnapshotName, MaintainedManifest['official'][SnapshotName]>()
+  const updated = new Map<
+    OfficialSnapshotName,
+    IconSearchResourceManifest['official'][OfficialSnapshotName]
+  >()
   const changes = new Set<string>()
   for (const name of officialSnapshotNames) {
     const entry = manifest.official[name]
@@ -93,8 +97,9 @@ async function generateCandidate(
       JSON.stringify(manifest),
     )
     await writeFile(join(directory, 'manifest.json'), bytes)
-    await loadOfficialIconSearchData(directory)
-    await writeCandidateNotices(manifest, directory, download)
+    const candidate = await readIconSearchResourceManifest(directory)
+    await loadOfficialIconSearchData(directory, candidate.official)
+    await writeCandidateNotices(candidate, directory, download)
   }
   return [...changes]
 }
@@ -146,7 +151,7 @@ export async function checkOfficialUpdates({
     noticePath,
   ]
   const original = await Promise.all(paths.map((path) => readFile(join(resources, path))))
-  const manifest = maintainedManifestSchema.parse(JSON.parse(original[0]!.toString('utf8')))
+  const manifest = parseIconSearchResourceManifest(original[0]!.toString('utf8'))
   const revisions = await discover()
   await mkdir(cache, { recursive: true })
   const temporary = await mkdtemp(join(cache, '.check-'))
@@ -158,7 +163,7 @@ export async function checkOfficialUpdates({
       await Promise.all(paths.map((path, index) => writeFile(join(tree, path), original[index]!)))
     }
     // Verify the exact bytes used for the patch, including any local edits.
-    await loadOfficialIconSearchData(baseline)
+    await loadOfficialIconSearchData(baseline, manifest.official)
     const changes = await generateCandidate(manifest, revisions, candidate, download)
     if (!changes.length) return
     const current = await Promise.all(paths.map((path) => readFile(join(resources, path))))

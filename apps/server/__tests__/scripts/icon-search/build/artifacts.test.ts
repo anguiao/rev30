@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 import { buildIconSearchArtifacts } from '../../../../scripts/icon-search/build/generate-artifacts'
-import { officialSnapshotNames } from '../../../../scripts/icon-search/official/manifest'
+import { officialSnapshotNames } from '../../../../scripts/icon-search/resource-manifest'
 import {
   iterateIconSearchArtifacts,
   readIconSearchManifest,

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { SnapshotName } from './manifest'
+import type { OfficialSnapshotName } from '../resource-manifest'
 
 const run = promisify(execFile)
 const commitPattern = /^[0-9a-f]{40}$/
@@ -11,7 +11,7 @@ const projects = {
 } as const
 
 export type Revision = { repository: string; version: string; commit: string }
-export type OfficialRevisions = Record<SnapshotName, Revision>
+export type OfficialRevisions = Record<OfficialSnapshotName, Revision>
 
 async function listRefs(repository: string, pattern: string): Promise<string> {
   const { stdout } = await run(

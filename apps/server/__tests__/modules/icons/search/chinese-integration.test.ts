@@ -6,8 +6,11 @@ import {
 import { beforeAll, describe, expect } from 'vitest'
 import { loadIconPackage } from '../../../../scripts/icon-search/build/package-source'
 import { deriveCollectionSearchFacts } from '../../../../scripts/icon-search/build/package-facts'
-import { iconSearchResourcesDirectory } from '../../../../scripts/icon-search/build/maintenance'
 import { loadOfficialIconSearchData } from '../../../../scripts/icon-search/official/load'
+import {
+  iconSearchResourcesDirectory,
+  readIconSearchResourceManifest,
+} from '../../../../scripts/icon-search/resource-manifest'
 import { createCustomIconSetService } from '../../../../src/modules/content/icon-sets/custom/service'
 import type { IconSearchFacts } from '../../../../src/modules/icons/search/facts'
 import { loadIconSearchDictionary } from '../../../../src/modules/icons/search/dictionary'
@@ -68,9 +71,10 @@ const svg = '<svg viewBox="0 0 24 24"><path d="M0 0h10v10H0z" /></svg>'
 let facts: IconSearchFacts[]
 
 beforeAll(async () => {
+  const manifest = await readIconSearchResourceManifest(iconSearchResourcesDirectory)
   const [iconPackage, official] = await Promise.all([
     loadIconPackage(),
-    loadOfficialIconSearchData(iconSearchResourcesDirectory),
+    loadOfficialIconSearchData(iconSearchResourcesDirectory, manifest.official),
     loadIconSearchDictionary(),
   ])
   const prefixes = new Set([...builtinIds].map((id) => id.slice(0, id.indexOf(':'))))

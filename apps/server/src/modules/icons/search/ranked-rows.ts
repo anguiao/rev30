@@ -1,23 +1,16 @@
 import { sql } from 'drizzle-orm'
 import type { DbExecutor } from '../../../db'
+import type { SearchCursorPosition } from '../cursor'
 import type { IconSearchMetadata } from './facts'
 import type { IconSearchQueryPlan } from './planner'
 import { compileRankedIconSearch } from './ranked-query'
 
-export type RankedIconSearchPosition = {
-  tier: number
-  matchScore: number
-  rank: string
-  preference: number
-  id: string
-}
-
-export type RankedIconSearchRow = Omit<IconSearchMetadata, 'source'> & RankedIconSearchPosition
+export type RankedIconSearchRow = Omit<IconSearchMetadata, 'source'> & SearchCursorPosition
 
 type RankedRowsOptions = {
   source?: IconSearchMetadata['source']
   prefix?: string
-  after?: RankedIconSearchPosition
+  after?: SearchCursorPosition
   limit: number
 }
 

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 
-import { officialSnapshotManifestSchema, officialSnapshotNames } from './manifest'
+import { officialSnapshotNames, type IconSearchResourceManifest } from '../resource-manifest'
 
 export type OfficialIconText = {
   titles: readonly string[]
@@ -25,7 +25,6 @@ export type OfficialIconSearchData = {
   forCollection(collection: OfficialIconCollection): IconTextLookup
 }
 
-const manifestSchema = z.object({ official: officialSnapshotManifestSchema })
 const labelSchema = z.string().regex(/\p{Script=Han}/u)
 const annotationSchema = z
   .strictObject({ titles: z.array(labelSchema), tags: z.array(labelSchema) })
@@ -118,15 +117,13 @@ const prepareAdapters = {
 
 export async function loadOfficialIconSearchData(
   directory: string,
+  snapshots: IconSearchResourceManifest['official'],
 ): Promise<OfficialIconSearchData> {
-  const { official } = manifestSchema.parse(
-    JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8')),
-  )
   const adapters = await Promise.all(
     officialSnapshotNames.map(async (name) => {
       const path = `official/${name}`
       const content = await readFile(join(directory, path))
-      if (createHash('sha256').update(content).digest('hex') !== official[name].checksum) {
+      if (createHash('sha256').update(content).digest('hex') !== snapshots[name].checksum) {
         throw new Error(`Official snapshot checksum mismatch: ${path}`)
       }
       return prepareAdapters[name](JSON.parse(content.toString('utf8')))
@@ -134,7 +131,7 @@ export async function loadOfficialIconSearchData(
   )
 
   return {
-    checksums: officialSnapshotNames.map((name) => official[name].checksum),
+    checksums: officialSnapshotNames.map((name) => snapshots[name].checksum),
     forCollection(collection) {
       for (const adapter of adapters) {
         const lookup = adapter(collection)

@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { onTestFinished } from 'vitest'
 import type { IconPackageCollection } from '../../../../scripts/icon-search/build/package-source'
-import { officialSnapshotNames } from '../../../../scripts/icon-search/official/manifest'
+import {
+  officialSnapshotNames,
+  type OfficialSnapshotName,
+} from '../../../../scripts/icon-search/resource-manifest'
 import { checksum } from '../../../../src/modules/icons/search/artifacts/schema'
 
 export const fixtureCollection: IconPackageCollection = {
@@ -23,8 +26,6 @@ export async function temporaryDirectory() {
   return directory
 }
 
-type SnapshotName = (typeof officialSnapshotNames)[number]
-
 export async function writeResourceFixture(directory: string) {
   const concepts = join(directory, 'concepts')
   const official = join(directory, 'official')
@@ -36,7 +37,7 @@ export async function writeResourceFixture(directory: string) {
     url: 'https://example.invalid/fixture.json',
     checksum: checksum('source'),
   }
-  const snapshots: Record<SnapshotName, string> = {
+  const snapshots: Record<OfficialSnapshotName, string> = {
     'icon-park.json': JSON.stringify({
       'block-seven': { titles: ['俄罗斯方块'], tags: ['拼接'] },
     }),

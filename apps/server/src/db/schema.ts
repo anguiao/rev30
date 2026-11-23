@@ -852,86 +852,53 @@ export const customIconSetIcons = pgTable(
 
 const iconSearchCategories = sql`('ui', 'brand', 'programming', 'emoji', 'flag', 'other', 'custom')`
 
-function iconSearchDocumentColumns() {
-  return {
-    id: text('id').primaryKey(),
-    prefix: text('prefix').notNull(),
-    name: text('name').notNull(),
-    source: text('source', { enum: ['builtin', 'custom'] }).notNull(),
-    collection: text('collection').notNull(),
-    palette: boolean('palette').notNull(),
-    preference: integer('preference').notNull().default(0),
-    customIconId: uuid('custom_icon_id'),
-    category: text('category').$type<IconSearchCategory>().notNull(),
-    exactKeys: text('exact_keys').array().notNull(),
-    tokens: text('tokens').array().notNull(),
-    primaryTokens: text('primary_tokens')
-      .array()
-      .notNull()
-      .default(sql`'{}'::text[]`),
-    relatedTokens: text('related_tokens').array().notNull(),
-    searchVector: tsvector('search_vector').notNull(),
-    englishRankVector: tsvector('english_rank_vector').notNull(),
-  }
+function createIconSearchDocumentTable<Name extends string>(name: Name) {
+  return pgTable(
+    name,
+    {
+      id: text('id').primaryKey(),
+      prefix: text('prefix').notNull(),
+      name: text('name').notNull(),
+      source: text('source', { enum: ['builtin', 'custom'] }).notNull(),
+      collection: text('collection').notNull(),
+      palette: boolean('palette').notNull(),
+      preference: integer('preference').notNull().default(0),
+      customIconId: uuid('custom_icon_id'),
+      category: text('category').$type<IconSearchCategory>().notNull(),
+      exactKeys: text('exact_keys').array().notNull(),
+      tokens: text('tokens').array().notNull(),
+      primaryTokens: text('primary_tokens')
+        .array()
+        .notNull()
+        .default(sql`'{}'::text[]`),
+      relatedTokens: text('related_tokens').array().notNull(),
+      searchVector: tsvector('search_vector').notNull(),
+      englishRankVector: tsvector('english_rank_vector').notNull(),
+    },
+    (table) => [
+      index(`${name}_exact_keys_gin`).using('gin', table.exactKeys),
+      index(`${name}_tokens_gin`).using('gin', table.tokens),
+      index(`${name}_primary_tokens_gin`).using('gin', table.primaryTokens),
+      index(`${name}_related_tokens_gin`).using('gin', table.relatedTokens),
+      index(`${name}_search_vector_gin`).using('gin', table.searchVector),
+      index(`${name}_name_idx`).on(table.name),
+      index(`${name}_source_prefix_id_idx`).on(table.source, table.prefix, table.id),
+      uniqueIndex(`${name}_custom_icon_id_unique`)
+        .on(table.customIconId)
+        .where(sql`${table.customIconId} IS NOT NULL`),
+      check(`${name}_source_check`, sql`${table.source} IN ('builtin', 'custom')`),
+      check(`${name}_category_check`, sql`${table.category} IN ${iconSearchCategories}`),
+      check(
+        `${name}_custom_id_check`,
+        sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
+      ),
+    ],
+  )
 }
 
-export const iconSearchDocuments = pgTable(
-  'icon_search_documents',
-  iconSearchDocumentColumns(),
-  (table) => [
-    index('icon_search_documents_exact_keys_gin').using('gin', table.exactKeys),
-    index('icon_search_documents_tokens_gin').using('gin', table.tokens),
-    index('icon_search_documents_primary_tokens_gin').using('gin', table.primaryTokens),
-    index('icon_search_documents_related_tokens_gin').using('gin', table.relatedTokens),
-    index('icon_search_documents_search_vector_gin').using('gin', table.searchVector),
-    index('icon_search_documents_name_idx').on(table.name),
-    index('icon_search_documents_source_prefix_id_idx').on(table.source, table.prefix, table.id),
-    uniqueIndex('icon_search_documents_custom_icon_id_unique')
-      .on(table.customIconId)
-      .where(sql`${table.customIconId} IS NOT NULL`),
-    check('icon_search_documents_source_check', sql`${table.source} IN ('builtin', 'custom')`),
-    check(
-      'icon_search_documents_category_check',
-      sql`${table.category} IN ${iconSearchCategories}`,
-    ),
-    check(
-      'icon_search_documents_custom_id_check',
-      sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
-    ),
-  ],
-)
-
-export const iconSearchDocumentsStaging = pgTable(
+export const iconSearchDocuments = createIconSearchDocumentTable('icon_search_documents')
+export const iconSearchDocumentsStaging = createIconSearchDocumentTable(
   'icon_search_documents_staging',
-  iconSearchDocumentColumns(),
-  (table) => [
-    index('icon_search_documents_staging_exact_keys_gin').using('gin', table.exactKeys),
-    index('icon_search_documents_staging_tokens_gin').using('gin', table.tokens),
-    index('icon_search_documents_staging_primary_tokens_gin').using('gin', table.primaryTokens),
-    index('icon_search_documents_staging_related_tokens_gin').using('gin', table.relatedTokens),
-    index('icon_search_documents_staging_search_vector_gin').using('gin', table.searchVector),
-    index('icon_search_documents_staging_name_idx').on(table.name),
-    index('icon_search_documents_staging_source_prefix_id_idx').on(
-      table.source,
-      table.prefix,
-      table.id,
-    ),
-    uniqueIndex('icon_search_documents_staging_custom_icon_id_unique')
-      .on(table.customIconId)
-      .where(sql`${table.customIconId} IS NOT NULL`),
-    check(
-      'icon_search_documents_staging_source_check',
-      sql`${table.source} IN ('builtin', 'custom')`,
-    ),
-    check(
-      'icon_search_documents_staging_category_check',
-      sql`${table.category} IN ${iconSearchCategories}`,
-    ),
-    check(
-      'icon_search_documents_staging_custom_id_check',
-      sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
-    ),
-  ],
 )
 
 export const iconSearchIndexState = pgTable(

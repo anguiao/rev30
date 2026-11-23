@@ -3,7 +3,6 @@ import { completeIconIdSchema, ICON_CURSOR_MAX_LENGTH } from '@rev30/contracts'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { InvalidIconCursorError } from './errors'
-import type { RankedIconSearchPosition } from './search/ranked-rows'
 
 // Preserve existing by-ID browse cursors across changes to search rules.
 const browseRulesVersion = '9e8f1b852038c6d01ec4d85198313d2533436f3ecf8f712f482d2410332deb23'
@@ -45,6 +44,8 @@ const searchPositionSchema = z
     id: completeIconIdSchema,
   })
   .strict()
+
+export type SearchCursorPosition = z.infer<typeof searchPositionSchema>
 
 const baseCursorSchema = z
   .object({
@@ -131,7 +132,7 @@ export function parseIconBrowseCursor(
 
 export function formatIconSearchCursor(
   options: SearchCursorOptions,
-  position: RankedIconSearchPosition,
+  position: SearchCursorPosition,
 ): string {
   return formatCursor({
     mode: 'search',
@@ -147,7 +148,7 @@ export function formatIconSearchCursor(
 export function parseIconSearchCursor(
   cursor: string | undefined,
   options: SearchCursorOptions,
-): RankedIconSearchPosition | undefined {
+): SearchCursorPosition | undefined {
   const parsed = parseCursor(cursor, options, options.queryRulesVersion)
   if (!parsed) return undefined
   if (parsed.mode !== 'search' || parsed.queryHash !== queryHash(options.query))

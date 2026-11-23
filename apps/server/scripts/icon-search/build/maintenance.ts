@@ -1,30 +1,20 @@
-import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { loadIconSearchConcepts } from '../../../src/modules/icons/search/concepts'
 import { loadOfficialIconSearchData } from '../official/load'
-import { maintainedManifestSchema } from '../official/manifest'
+import { readIconSearchResourceManifest } from '../resource-manifest'
 import { validateConceptTargets } from './package-facts'
 import type { IconPackageCollection } from './package-source'
-
-export const iconSearchResourcesDirectory = fileURLToPath(
-  new URL('../../../resources/icon-search', import.meta.url),
-)
 
 export async function loadMaintainedSearchData(
   directory: string,
   collections: readonly IconPackageCollection[],
   conceptsDirectory = join(directory, 'concepts'),
 ) {
-  const value: unknown = JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8'))
-  const parsed = maintainedManifestSchema.safeParse(value)
-  if (!parsed.success)
-    throw new Error('Invalid icon search resource manifest', { cause: parsed.error })
-
+  const manifest = await readIconSearchResourceManifest(directory)
   const [concepts, official] = await Promise.all([
     loadIconSearchConcepts(conceptsDirectory),
-    loadOfficialIconSearchData(directory),
+    loadOfficialIconSearchData(directory, manifest.official),
   ])
   validateConceptTargets(collections, concepts)
-  return { conceptsVersion: parsed.data.conceptsVersion, concepts, official }
+  return { conceptsVersion: manifest.conceptsVersion, concepts, official }
 }

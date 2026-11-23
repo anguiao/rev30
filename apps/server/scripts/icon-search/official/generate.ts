@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { DomUtils, parseDocument } from 'htmlparser2'
 import { z } from 'zod'
-import type { SnapshotName } from './manifest'
+import type { OfficialSnapshotName } from '../resource-manifest'
 
 type Labels = { titles: string[]; tags: string[] }
 type Snapshot = Map<string, Labels | string[]>
@@ -120,7 +120,11 @@ export function formatResourceJson(path: string, json: string): Buffer {
   })
 }
 
-export function generateSnapshot(name: SnapshotName, sources: string[], path: string): Buffer {
+export function generateSnapshot(
+  name: OfficialSnapshotName,
+  sources: string[],
+  path: string,
+): Buffer {
   const expected = name === 'cldr-emoji.json' || name === 'iso-flags.json' ? 2 : 1
   if (sources.length !== expected) throw new Error(`Expected ${expected} source files for ${name}`)
   let entries: Snapshot

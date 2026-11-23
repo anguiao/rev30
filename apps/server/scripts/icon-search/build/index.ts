@@ -1,6 +1,6 @@
 import { defaultIconSearchArtifactDirectory } from '../../../src/modules/icons/search/artifacts/reader'
+import { iconSearchResourcesDirectory } from '../resource-manifest'
 import { buildIconSearchArtifacts } from './generate-artifacts'
-import { iconSearchResourcesDirectory } from './maintenance'
 import { loadIconPackage } from './package-source'
 
 const startedAt = performance.now()

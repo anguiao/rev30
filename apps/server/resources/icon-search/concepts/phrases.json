@@ -583,7 +583,15 @@
   {
     "zh": ["已锁定", "上锁"],
     "en": ["locked", "lock-closed"],
-    "exclude": ["lock-open", "lock-off", "lock-unlock"]
+    "exclude": [
+      "lock-open",
+      "lock-off",
+      "lock-unlock",
+      "lock-keyhole-open",
+      "unlocked",
+      "unlock",
+      "open-lock"
+    ]
   },
   {
     "zh": ["未锁定", "已解锁", "开锁"],

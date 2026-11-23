@@ -313,6 +313,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
    - 在 `mdi` 集合中搜“文件恢复”或“恢复文件”，前 12 项均直接命中 `mdi:file-restore`。
 4. **官方中文直出（约 6～10 条）**：`俄罗斯方块`（命中 `icon-park*:block-seven`）、`笑哭` / `火箭`（命中 Emoji 集合）、`中国` / `日本`（命中国旗集合）。
 5. **歧义隔离与负例（约 8～12 条）**：
+   - 在 Lucide 中，“锁”“已锁定”和“上锁”均排除打开的 `lock-keyhole-open`，“解锁”可直接命中它。
    - `日志` 命中 `lucide:logs` 且前排不出现 `log-out`；
    - `罐头` 不命中 `mdi:trash-can`；
    - 验证“灯具、边界、圆角、填充、描边、轮廓、粗体／加粗、线段、直线”的含义。限定集合时，前 12 项应有切题图标，全量结果中排除仅靠绘制样式后缀命中的负例。例如 Phosphor 的“填充”应命中 `paint-bucket-fill`，并排除 `airplane-fill`。

@@ -37,7 +37,7 @@
       "open-lock"
     ]
   },
-  { "zh": ["解锁"], "en": ["unlock", "unlocked", "lock-open"] },
+  { "zh": ["解锁"], "en": ["unlock", "unlocked", "lock-open", "lock-keyhole-open"] },
   { "zh": ["认证"], "en": ["authentication", "authenticate"] },
   { "zh": ["授权"], "en": ["authorization"] },
   { "zh": ["验证", "校验"], "en": ["verify", "verification"] },

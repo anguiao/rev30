@@ -371,6 +371,16 @@ void describe('Official Chinese metadata', () => {
 })
 
 void describe('Ambiguity and required conditions', () => {
+  void it('keeps open padlocks out of locked-state searches', async () => {
+    for (const keyword of ['锁', '已锁定', '上锁']) {
+      const rows = await completeSearch(keyword, { prefix: 'lucide' })
+      requireHit(rows, ['lucide:lock-keyhole'])
+      assert(!rows.some(({ name }) => name === 'lock-keyhole-open'))
+    }
+    const { rows } = await search('解锁', { prefix: 'lucide' })
+    requireHit(rows, ['lucide:lock-keyhole-open'])
+  })
+
   void it('keeps standalone English names that directly represent a Chinese formatting or shape query', async () => {
     for (const [keyword, prefix, name] of [
       ['加粗', 'lucide', 'bold'],

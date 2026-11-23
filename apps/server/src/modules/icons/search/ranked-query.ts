@@ -224,10 +224,7 @@ function exactChineseEvidence(plan: ChineseIconSearchQuery) {
 function chineseRank(fragments: readonly IconSearchQueryFragment[]): SQL {
   const explicit = new Map<string, boolean>()
   const inferred = new Map<string, 'A' | 'ABC'>()
-  for (const { units, exactNames } of fragments) {
-    for (const name of exactNames) {
-      if (!inferred.has(name)) inferred.set(name, 'A')
-    }
+  for (const { units } of fragments) {
     for (const unit of units) {
       if (unit.kind === 'english') explicit.set(unit.key, unit.prefix)
       if (unit.kind !== 'han' || !unit.concept) continue

@@ -227,6 +227,25 @@ dbTest(
 )
 
 dbTest(
+  'uses heading aliases as complete names without boosting matching suffixes',
+  async ({ db }) => {
+    await insertDocuments(db, [
+      { id: 'acme:badge', category: 'custom', keywords: ['四级标题'] },
+      { id: 'acme:status-h4', category: 'custom', keywords: ['四级标题'] },
+      { id: 'acme:other-h4', category: 'custom' },
+      { id: 'lucide:h4' },
+    ])
+    const rows = await search(db, '四级标题')
+    expect(scores(rows)).toEqual([
+      ['lucide:h4', 0, 3],
+      ['acme:badge', 0, 3],
+      ['acme:status-h4', 0, 3],
+    ])
+    expect(rows.map(({ rank }) => rank)).toEqual(['0', '0', '0'])
+  },
+)
+
+dbTest(
   'uses the same fields for concept inference and rank while preserving user English and keyword weights',
   async ({ db }) => {
     await insertDocuments(db, [

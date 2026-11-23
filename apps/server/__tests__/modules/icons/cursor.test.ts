@@ -45,13 +45,16 @@ describe('icon cursor query binding', () => {
     )
   })
 
-  it('preserves the existing by-ID browse cursor', () => {
+  it.each([
+    ['v7', '177cc7b359d30030cfb3b0e0415ea35276da4fbd3067de63877dc3decf171ba7'],
+    ['v8', '9e8f1b852038c6d01ec4d85198313d2533436f3ecf8f712f482d2410332deb23'],
+  ])('resumes by-ID browsing from a search rules %s cursor', (_revision, rulesVersion) => {
     const options = { source: 'builtin' as const, prefix: 'lucide', dataVersion: 'icons-v1' }
     const legacyCursor = Buffer.from(
       JSON.stringify({
         mode: 'browse',
         ...options,
-        rulesVersion: '9e8f1b852038c6d01ec4d85198313d2533436f3ecf8f712f482d2410332deb23',
+        rulesVersion,
         position: { id: position.id },
       }),
     ).toString('base64url')
@@ -60,6 +63,15 @@ describe('icon cursor query binding', () => {
     expect(() =>
       parseIconBrowseCursor(legacyCursor, { ...options, dataVersion: 'icons-v2' }),
     ).toThrow(InvalidIconCursorError)
+  })
+
+  it('omits the search rules version from new browse cursors', () => {
+    const cursor = formatIconBrowseCursor({ source: 'custom' }, { id: 'acme:bell' })
+
+    expect(JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))).not.toHaveProperty(
+      'rulesVersion',
+    )
+    expect(parseIconBrowseCursor(cursor, { source: 'custom' })).toBe('acme:bell')
   })
 
   it('rejects cursors from another pagination mode', () => {

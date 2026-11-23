@@ -58,7 +58,7 @@ flowchart LR
 | 版本标识 | 参与计算的要素 | 写入位置 | 变更影响 |
 | --- | --- | --- | --- |
 | `indexRulesVersion` | 索引文档派生逻辑、原词序 `tsvector` 构造、`category` 映射表、[rules.ts](../../apps/server/src/modules/icons/search/rules.ts) 中的 `preference` 权重及官方中文注入规则 | 产物 `manifest.json`（[schema.ts](../../apps/server/src/modules/icons/search/artifacts/schema.ts)，`formatVersion` 升级为 `6`）与数据库状态表 `icon_search_index_state` | 仅当 `indexRulesVersion`、图标包版本或 `official/` 快照变化时，才触发后台重建 42 万行索引 |
-| `queryRulesVersion` | 查询切词/归一化规则、Tier 0～3 排序规则以及 `concepts/` 全部 JSON 文件的内容指纹 | 仅绑定在 [cursor.ts](../../apps/server/src/modules/icons/cursor.ts) 生成与校验的分页游标中 | 增删改概念词典后，旧游标自动按失效处理，**数据库索引直接复用，零重建** |
+| `queryRulesVersion` | 查询切词/归一化规则、Tier 0～3 排序规则以及 `concepts/` 全部 JSON 文件的内容指纹 | 关键词搜索的分页游标，见 [cursor.ts](../../apps/server/src/modules/icons/cursor.ts) | 更新概念词典后，旧搜索游标失效，数据库复用现有索引 |
 
 ---
 
@@ -246,7 +246,8 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 
 [cursor.ts](../../apps/server/src/modules/icons/cursor.ts) 同步演进：
 - 游标位置字段由 `(level, primaryMatches, rank, preference, id)` 更新为 `(tier, matchScore, rank, preference, id)`。
-- 游标的 `rulesVersion` 绑定为 `queryRulesVersion`，搜索游标的 `dataVersion` 继续绑定数据库已提交的 `indexVersion`。数据和规则一致时，按同一顺序翻页，无重复、无遗漏。版本变化使游标失效时，沿用现有流程，从第一页重新获取。
+- 关键词搜索的游标通过 `rulesVersion` 绑定 `queryRulesVersion`，通过 `dataVersion` 绑定数据库已提交的 `indexVersion`。数据和规则一致时，按同一顺序翻页，无重复、无遗漏。版本变化使游标失效时，沿用现有流程，从第一页重新获取。
+- 按 ID 浏览图标库时，游标记录图标来源、图标集筛选和上一页最后一个 ID。内置图标另绑定图标包版本。读取旧浏览游标时忽略其中的 `rulesVersion`，词典或搜索规则更新后仍可继续翻页。
 
 ---
 

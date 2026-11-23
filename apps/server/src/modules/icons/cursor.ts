@@ -4,9 +4,6 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { InvalidIconCursorError } from './errors'
 
-// Preserve existing by-ID browse cursors across changes to search rules.
-const browseRulesVersion = '9e8f1b852038c6d01ec4d85198313d2533436f3ecf8f712f482d2410332deb23'
-
 type CursorOptions = {
   source: 'builtin' | 'custom' | 'all'
   prefix?: string
@@ -51,7 +48,6 @@ const baseCursorSchema = z
   .object({
     source: z.enum(['builtin', 'custom', 'all']),
     prefix: z.string().nullable(),
-    rulesVersion: z.string(),
     dataVersion: z.string().nullable(),
   })
   .strict()
@@ -59,10 +55,13 @@ const baseCursorSchema = z
 const cursorPayloadSchema = z.discriminatedUnion('mode', [
   baseCursorSchema.extend({
     mode: z.literal('browse'),
+    // Older browse cursors carried the search rules version.
+    rulesVersion: z.string().optional(),
     position: browsePositionSchema,
   }),
   baseCursorSchema.extend({
     mode: z.literal('search'),
+    rulesVersion: z.string(),
     dataVersion: z.string(),
     queryHash: z.string().regex(/^[a-f0-9]{64}$/),
     position: searchPositionSchema,
@@ -82,7 +81,6 @@ function formatCursor(payload: CursorPayload): string {
 function parseCursor(
   cursor: string | undefined,
   options: CursorOptions,
-  rulesVersion: string,
 ): CursorPayload | undefined {
   if (!cursor) return undefined
   if (cursor.length > ICON_CURSOR_MAX_LENGTH) throw new InvalidIconCursorError()
@@ -99,7 +97,6 @@ function parseCursor(
   if (
     parsed.source !== options.source ||
     parsed.prefix !== (options.prefix ?? null) ||
-    parsed.rulesVersion !== rulesVersion ||
     parsed.dataVersion !== (options.dataVersion ?? null)
   )
     throw new InvalidIconCursorError()
@@ -114,7 +111,6 @@ export function formatIconBrowseCursor(
     mode: 'browse',
     source: options.source,
     prefix: options.prefix ?? null,
-    rulesVersion: browseRulesVersion,
     dataVersion: options.dataVersion ?? null,
     position,
   })
@@ -124,7 +120,7 @@ export function parseIconBrowseCursor(
   cursor: string | undefined,
   options: BrowseCursorOptions,
 ): string | undefined {
-  const parsed = parseCursor(cursor, options, browseRulesVersion)
+  const parsed = parseCursor(cursor, options)
   if (!parsed) return undefined
   if (parsed.mode !== 'browse') throw new InvalidIconCursorError()
   return parsed.position.id
@@ -149,9 +145,13 @@ export function parseIconSearchCursor(
   cursor: string | undefined,
   options: SearchCursorOptions,
 ): SearchCursorPosition | undefined {
-  const parsed = parseCursor(cursor, options, options.queryRulesVersion)
+  const parsed = parseCursor(cursor, options)
   if (!parsed) return undefined
-  if (parsed.mode !== 'search' || parsed.queryHash !== queryHash(options.query))
+  if (
+    parsed.mode !== 'search' ||
+    parsed.rulesVersion !== options.queryRulesVersion ||
+    parsed.queryHash !== queryHash(options.query)
+  )
     throw new InvalidIconCursorError()
   return parsed.position
 }

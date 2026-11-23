@@ -80,8 +80,9 @@ flowchart LR
 | `other` | `Thematic`、`Archive / Unmaintained` 及未声明分类的内置集合 |
 | `custom` | 用户自定义图标 |
 
-4. **升级 `search_vector` 以保留英文原名词序**：改变当前 [rebuild.ts](../../apps/server/src/modules/icons/search/indexing/rebuild.ts) 将英文词项按字母排序去重后再喂给 `to_tsvector` 的做法。改按以下结构构造 `search_vector`：
-   - **权重 `A`（主名称向量）**：将规范化后的图标原名按英文/数字边界连字符与斜杠替换为单个空格，保持原始顺序与重复位置直接生成 `setweight(to_tsvector('simple', primary_name_text), 'A')`（例如 `log-out` 生成 `'log':1A 'out':2A`，`heading-4` 生成 `'heading':1A '4':2A`）。
+4. **按原名词序构造 `search_vector`**。批量写入索引时，按以下四种来源赋予词项权重。[documents.ts](../../apps/server/src/modules/icons/search/indexing/documents.ts)
+
+   - **权重 `A`（主名称向量）**。将规范化后图标原名中的连字符和斜杠替换为空格，按原始词序和重复位置生成 `setweight(to_tsvector('simple', document."primaryNameText"), 'A')`。例如 `log-out` 生成 `'log':1A 'out':2A`，`heading-4` 生成 `'heading':1A '4':2A`。
    - **权重 `B`（自定义关键词）**。来自用户填写的英文关键词，保留现有完整词和纯字母前缀匹配。例如名称为 `badge`、关键词为 `finance` 的自定义图标可以通过 `fina` 找到。英文名称相邻短语只查权重 `A`，以免将名称末尾和关键词开头拼成一个短语。
    - **权重 `C`（逐图标分类）**。提取上游明确分配给该图标的分类中的英文及字母数字词项。
    - **权重 `D`（图标集）**。提取集合名称和 prefix 的英文及字母数字词项，供用户直接输入这些词时匹配，如 `lucide 登出` 中的 `lucide`。

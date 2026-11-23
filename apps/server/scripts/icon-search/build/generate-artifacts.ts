@@ -130,6 +130,8 @@ export async function buildIconSearchArtifacts({
       collections,
       conceptsDirectory,
     )
+    const notices = 'THIRD_PARTY_NOTICES.txt'
+    await copyFile(join(resourcesDirectory, 'official', notices), join(staging, notices))
     await writeArtifacts(staging, iconPackageVersion, collections, official)
 
     const manifest = await readIconSearchManifest(staging)

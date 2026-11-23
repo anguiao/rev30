@@ -57,6 +57,7 @@ export async function writeResourceFixture(directory: string) {
   }
   await Promise.all([
     ...officialSnapshotNames.map((name) => writeFile(join(official, name), snapshots[name])),
+    writeFile(join(official, 'THIRD_PARTY_NOTICES.txt'), 'Fixture upstream license\n'),
     writeFile(join(directory, 'manifest.json'), JSON.stringify(manifest)),
     writeFile(join(concepts, 'words.json'), '[{"zh":["闹钟"],"en":["alarm-clock"]}]'),
     writeFile(join(concepts, 'phrases.json'), '[]'),

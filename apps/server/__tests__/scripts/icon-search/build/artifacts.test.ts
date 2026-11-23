@@ -70,6 +70,9 @@ describe('icon search artifacts', () => {
       'icon-park.jsonl.gz',
       'icon-park-outline.jsonl.gz',
     ])
+    expect(await readFile(join(options.outputDirectory, 'THIRD_PARTY_NOTICES.txt'))).toEqual(
+      await readFile(join(resources.official, 'THIRD_PARTY_NOTICES.txt')),
+    )
 
     const documents = await readDocuments(options.outputDirectory)
     const byId = new Map(documents.map((document) => [document.id, document]))

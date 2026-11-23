@@ -37,6 +37,6 @@ pnpm --filter @rev30/server exec tsx scripts/icon-search/official/check.ts
 
 只调整概念词典时运行 `pnpm --filter @rev30/server icon-search:validate`。需要生成发布产物时运行 `pnpm --filter @rev30/server icon-search:build`，构建会校验输入并完整回读分片。
 
-校验和构建使用本地维护数据和当前锁定的 `@iconify/json`。构建读取图标定义、隐藏定义、别名和包内分类，并合入各集合的对应官方快照。压缩 JSONL 和格式 6 的索引 manifest 生成到 `apps/server/dist/icon-search`，经校验后替换上一次产物。词典随发布目录一起复制。生成文件随 `dist` 分发，开发和发布均在 `apps/server` 下运行。
+校验和构建使用本地维护数据和当前锁定的 `@iconify/json`。构建读取图标定义、隐藏定义、别名和包内分类，并合入各集合的对应官方快照。压缩 JSONL 和格式 6 的索引 manifest 生成到 `apps/server/dist/icon-search`，经校验后替换上一次产物。该目录也随附概念词典和官方数据的第三方许可声明 `THIRD_PARTY_NOTICES.txt`。生成文件随 `dist` 分发，开发和发布均在 `apps/server` 下运行。
 
 首次开发、索引产物缺失或损坏时，手动构建并重启服务。图标包、官方快照或索引派生规则变更后也需重新构建。发布构建会自动执行这一步。

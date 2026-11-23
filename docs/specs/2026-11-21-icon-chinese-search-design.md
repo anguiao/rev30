@@ -282,6 +282,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 - `icon-search:build`：
   - 先运行上述校验；完全离线读取锁定 `@iconify/json` 与 `official/` 快照，计算 `indexRulesVersion`、`contentFingerprint` 与 `indexVersion`，输出压缩 JSONL 产物到 `apps/server/dist/icon-search`（不纳入 Git）。
   - 源码运行时直接读取 `resources/icon-search/concepts`。发布构建将三份词典复制到索引产物的 `concepts` 子目录，打包后的服务从该目录加载，入口改名或拆包后沿用同一位置。
+  - 官方数据的许可声明原样复制到 `dist/icon-search/THIRD_PARTY_NOTICES.txt`，随索引一起分发。
   - 服务端打包保留上一版索引目录。索引构建逐条回读新分片，核对完整性、记录计数和 manifest 校验和后才替换旧产物。
 
 ### 索引生命周期与故障语义

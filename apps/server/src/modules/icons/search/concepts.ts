@@ -7,7 +7,7 @@ import { iconSearchCategorySchema, type IconSearchCategory } from './facts'
 import { compactIconSearchKey, hanCharacterPattern } from './text'
 
 // Increment when query parsing or ranking changes, independently of the index rules.
-const queryRulesRevision = 4
+const queryRulesRevision = 5
 const conceptFiles = ['words', 'phrases', 'intent'] as const
 type ConceptFile = (typeof conceptFiles)[number]
 type ConceptSources = Readonly<Record<ConceptFile, unknown>>

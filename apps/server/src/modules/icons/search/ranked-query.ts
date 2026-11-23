@@ -187,9 +187,7 @@ function fragmentEvidence(fragment: IconSearchQueryFragment) {
   ])
   const fullRelated = any([fullDirect, overlaps(sql`related_tokens`, fragment.originalKeys)])
   const score =
-    fullRelated === never
-      ? unitsScore
-      : sql`GREATEST((${fullDirect})::integer, CASE WHEN ${unitsWithPrefix} THEN ${unitsScore} ELSE 0 END)`
+    fullDirect === never ? unitsScore : sql`GREATEST((${fullDirect})::integer, ${unitsScore})`
   return {
     direct: any([unitsDirect, fullDirect]),
     related: any([unitsRelated, fullRelated]),

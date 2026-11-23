@@ -281,6 +281,19 @@ void describe('Spacing, numeric forms, and synonyms', () => {
 })
 
 void describe('Official Chinese metadata', () => {
+  for (const [keyword, prefix, directTitle, tagOnly] of [
+    ['单轨电车', 'twemoji', 'monorail', 'light-rail'],
+    ['环球旅行', 'icon-park-outline', 'journey', 'in-flight'],
+  ] as const) {
+    void it(`${keyword} favors the title that also matches part of the official tag`, async () => {
+      const { rows } = await search(keyword, { prefix })
+      const title = requireHit(rows, [directTitle], 'name')
+      const tag = requireHit(rows, [tagOnly], 'name')
+      assert.deepEqual([title.tier, title.matchScore, tag.tier, tag.matchScore], [2, 1, 2, 0])
+      assertBefore(rows, title, tag)
+    })
+  }
+
   void it('俄罗斯方块 uses the official IconPark title', async () => {
     const { rows } = await search('俄罗斯方块')
     const hit = requireHit(rows, [

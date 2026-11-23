@@ -171,7 +171,8 @@ apps/server/resources/icon-search/
 
 设计约定：
 - 构建期通过统一的可插拔适配器接口读取 `official/`；后续若确认其他集合（如 Ant Design / Element Plus / TDesign）存在高质量、结构化的官方中文清单，只需新增快照与适配器并记录进 `manifest.json`，无需改动检索与查询引擎。
-- 提供独立维护脚本供人工按需从上游同步更新 `official/` 快照与 `manifest.json` 校验和；日常 `icon-search:build` 100% 离线执行，仅读取仓库内快照并强制校验 SHA-256。
+- 项目根目录的 `pnpm deps:update` 先调用 `pnpm -r update`，成功后运行 TypeScript 维护工具在本地检查官方数据。三个上游独立发版，每次维护依赖都检查，即使图标包版本相同。IconPark 跟踪主分支提交，RemixIcon 和 Unicode CLDR 跟踪正式版本。
+- 上游中文数据有变化时，在本地缓存生成并校验 Git 补丁，包含官方快照、固定到提交的来源与校验和以及对应的上游许可声明。维护者审阅、应用并与依赖更新一起提交。发布构建使用仓库内快照，完全离线。
 
 ---
 
@@ -261,7 +262,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 | **新增/重构** | `apps/server/src/modules/icons/search/planner.ts` | 纯函数查询解析器：归一化、边界切分、数字/级别模式归一、词典最长匹配切词与查询结构生成 |
 | **重构** | [repository.ts](../../apps/server/src/modules/icons/search/repository.ts)、[document.ts](../../apps/server/src/modules/icons/search/document.ts)、[text.ts](../../apps/server/src/modules/icons/search/text.ts)、[rules.ts](../../apps/server/src/modules/icons/search/rules.ts) | 实现 4 层互斥扁平 SQL 查询、新版文档派生（保留词序向量与 `category` 映射）及双版本号分离 |
 | **重构** | [schema.ts](../../apps/server/src/db/schema.ts) + 新建 Drizzle 正向迁移 | 演进 `icon_search_documents` 与 `icon_search_documents_staging` 结构与索引 |
-| **重构** | `apps/server/src/modules/icons/search/artifacts/`、`apps/server/src/modules/icons/search/indexing/`、`apps/server/scripts/icon-search/build/` | 升级产物 schema 至 `formatVersion = 6`，实现离线构建官方中文注入、校验与独立快照同步脚本 |
+| **重构** | `apps/server/src/modules/icons/search/artifacts/`、`apps/server/src/modules/icons/search/indexing/`、`apps/server/scripts/icon-search/build/`、`apps/server/scripts/icon-search/official/` | 升级产物 schema 至 `formatVersion = 6`，实现离线构建、官方中文注入，以及本地查新与补丁生成 |
 | **同步** | [cursor.ts](../../apps/server/src/modules/icons/cursor.ts) | 更新 5 元排序游标与 `queryRulesVersion` 绑定 |
 | **不变** | [packages/contracts/src/icons.ts](../../packages/contracts/src/icons.ts)、[search-text.ts](../../packages/utils/src/search-text.ts)、前端图标选择器与图标库 | 保持公开 API 契约、前端界面与两入口共用机制不变 |
 
@@ -279,8 +280,7 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 - `icon-search:build`：
   - 先运行上述校验；完全离线读取锁定 `@iconify/json` 与 `official/` 快照，计算 `indexRulesVersion`、`contentFingerprint` 与 `indexVersion`，输出压缩 JSONL 产物到 `apps/server/dist/icon-search`（不纳入 Git）。
   - 源码运行时直接读取 `resources/icon-search/concepts`。发布构建将三份词典复制到索引产物的 `concepts` 子目录，打包后的服务从该目录加载，入口改名或拆包后沿用同一位置。
-- `icon-search:verify`：
-  - 校验构建产物完整性、记录计数与 manifest 校验和一致性。
+  - 替换旧产物前逐条回读生成的分片，校验完整性、记录计数和 manifest 校验和。
 
 ### 索引生命周期与故障语义
 
@@ -346,6 +346,6 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
 
 实施阶段按以下顺序完成最终验证，并按需更新 [README.md](../../apps/server/resources/icon-search/README.md) 与项目搜索说明：
 
-1. 运行 `pnpm --filter @rev30/server icon-search:validate`、`pnpm --filter @rev30/server icon-search:build` 与 `pnpm --filter @rev30/server icon-search:verify`；
+1. 运行 `pnpm --filter @rev30/server icon-search:validate` 和 `pnpm --filter @rev30/server icon-search:build`，后者包含分片完整性校验；
 2. 运行全量图标搜索单元、集成、回归与性能基准测试。
 3. 在沙箱外运行完整 `pnpm check`（含 `typecheck`、`lint:check`、`format:check`、`test` 与 Chromium 浏览器端到端测试），全部通过后方可进入后续阶段。

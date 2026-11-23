@@ -4,6 +4,7 @@
 
 - 对话和项目文档使用中文，代码与注释使用英文。
 - workspace 内部依赖统一使用 `workspace:*`。
+- 更新项目依赖时，在仓库根目录运行 `pnpm deps:update`。
 - 修改文件前，读取目标路径上尚未加载的所有 `AGENTS.md`；跨 workspace 任务分别读取相关规则。
 - 共享 zod schema、请求/响应契约和 TypeScript 类型放在 `packages/contracts`，前后端尽量复用这些约束。
 - 跨端纯工具函数放在 `packages/utils`，不要和接口契约混放。

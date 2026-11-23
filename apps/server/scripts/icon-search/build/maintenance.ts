@@ -1,22 +1,15 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { z } from 'zod'
 import { loadIconSearchConcepts } from '../../../src/modules/icons/search/concepts'
 import { loadOfficialIconSearchData } from '../official/load'
-import { officialSnapshotManifestSchema } from '../official/manifest'
+import { maintainedManifestSchema } from '../official/manifest'
 import { validateConceptTargets } from './package-facts'
 import type { IconPackageCollection } from './package-source'
 
 export const iconSearchResourcesDirectory = fileURLToPath(
   new URL('../../../resources/icon-search', import.meta.url),
 )
-
-const maintainedManifestSchema = z.strictObject({
-  formatVersion: z.literal(3),
-  conceptsVersion: z.string().min(1),
-  official: officialSnapshotManifestSchema,
-})
 
 export async function loadMaintainedSearchData(
   directory: string,

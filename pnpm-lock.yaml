@@ -271,6 +271,9 @@ importers:
       drizzle-kit:
         specifier: rc
         version: 1.0.0-rc.4
+      htmlparser2:
+        specifier: 12.0.0
+        version: 12.0.0
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.28)(supports-color@7.2.0)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.0)

@@ -18,9 +18,7 @@
     "coverage": "vitest run --pool=threads --coverage",
     "icon-search:build": "tsx scripts/icon-search/build/index.ts",
     "icon-search:validate": "tsx scripts/icon-search/build/validate-data.ts",
-    "icon-search:verify": "tsx scripts/icon-search/build/validate-artifacts.ts",
     "icon-search:regression": "tsx --test scripts/icon-search/regression/index.ts",
-    "icon-search:sync-official": "python3 scripts/icon-search/official/sync.py",
     "icon-search:benchmark": "tsx scripts/icon-search/benchmark/index.ts",
     "db:bootstrap": "tsx src/db/bootstrap.ts",
     "db:recover-admin": "tsx src/db/recover-admin.ts",
@@ -57,6 +55,7 @@
     "@types/bytes": "catalog:",
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "rc",
+    "htmlparser2": "12.0.0",
     "tsup": "^8.5.1",
     "tsx": "^4.23.15"
   }

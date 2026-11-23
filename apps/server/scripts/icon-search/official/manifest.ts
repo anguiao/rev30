@@ -7,6 +7,8 @@ export const officialSnapshotNames = [
   'iso-flags.json',
 ] as const
 
+export type SnapshotName = (typeof officialSnapshotNames)[number]
+
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/)
 const sourceSchema = z.strictObject({
   project: z.string().min(1),
@@ -22,3 +24,11 @@ export const officialSnapshotManifestSchema = z.record(
     sources: z.array(sourceSchema).min(1),
   }),
 )
+
+export const maintainedManifestSchema = z.strictObject({
+  formatVersion: z.literal(3),
+  conceptsVersion: z.string().min(1),
+  official: officialSnapshotManifestSchema,
+})
+
+export type MaintainedManifest = z.infer<typeof maintainedManifestSchema>

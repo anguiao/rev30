@@ -9,6 +9,8 @@
     "dev:server": "pnpm --filter @rev30/server dev",
     "dev:playground:rich-text": "pnpm --filter @rev30/rich-text-playground dev",
     "build": "pnpm -r build",
+    "deps:update": "pnpm -r update",
+    "postdeps:update": "pnpm --filter @rev30/server exec tsx scripts/icon-search/official/check.ts",
     "check": "pnpm format:check && pnpm lint:check && pnpm typecheck && pnpm test && pnpm build",
     "typecheck": "pnpm -r --no-sort typecheck",
     "test": "pnpm -r --filter '!@rev30/rich-text-playground' test && pnpm --filter @rev30/rich-text-playground test",

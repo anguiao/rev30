@@ -23,19 +23,19 @@
 | `official/cldr-emoji.json` | Unicode CLDR 简体中文 Emoji 注释。按码点序列匹配，短名称进入精确键和主词项，注释关键词进入相关词项。 |
 | `official/iso-flags.json`  | Unicode CLDR 和 ISO 3166-1 区域代码。按两位区域码将中文名称和简称写入精确键和主词项。                |
 
-资源 `manifest.json` 记录官方快照的 SHA-256 以及上游版本、地址和原文件 SHA-256。更新上游版本时调整这些来源条目，再运行同步脚本下载并验证上游文件，重新生成快照和快照校验和。
+资源 `manifest.json` 记录上游版本、固定到提交的来源地址以及原文件和快照的 SHA-256。在仓库根目录运行 `pnpm deps:update`，pnpm 完成 workspace 依赖升级后会检查三个上游，即使 `@iconify/json` 版本相同也会检查。IconPark 跟踪主分支提交，RemixIcon 和 Unicode CLDR 跟踪正式版本。
+
+若中文数据检查失败，可以从仓库根目录单独重试。
 
 ```bash
-pnpm --filter @rev30/server icon-search:sync-official
+pnpm --filter @rev30/server exec tsx scripts/icon-search/official/check.ts
 ```
+
+有中文搜索数据变化时，终端显示涉及的上游版本和本地补丁路径。补丁在 `apps/server/node_modules/.cache/icon-search-official/`，包含快照、版本清单和对应版本的上游许可声明。在仓库根目录用终端给出的 `git apply --stat` 查看改动范围，可直接打开补丁查看逐行差异。决定采用后执行提示的 `git apply`，审阅并提交文件，再重新构建搜索产物并重启服务。已提交的快照随项目版本发布。
 
 ## 离线验证与发布
 
-```bash
-pnpm --filter @rev30/server icon-search:validate
-pnpm --filter @rev30/server icon-search:build
-pnpm --filter @rev30/server icon-search:verify
-```
+只调整概念词典时运行 `pnpm --filter @rev30/server icon-search:validate`。需要生成发布产物时运行 `pnpm --filter @rev30/server icon-search:build`，构建会校验输入并完整回读分片。
 
 校验和构建使用本地维护数据和当前锁定的 `@iconify/json`。构建读取图标定义、隐藏定义、别名和包内分类，并合入各集合的对应官方快照。压缩 JSONL 和格式 6 的索引 manifest 生成到 `apps/server/dist/icon-search`，经校验后替换上一次产物。词典随发布目录一起复制。生成文件随 `dist` 分发，开发和发布均在 `apps/server` 下运行。
 

@@ -45,7 +45,7 @@ pnpm dev
 
 图标选择器和内容管理图标库共用数据库搜索索引。可以用中文同义词、图标用途或中英组合搜索。搜索“通知”可找到通知图标和铃铛。自定义图标按名称和关键词匹配。
 
-仅更新中文查询词典时，重启服务即可生效并复用现有数据库索引。搜索产物缺失或图标包、官方中文快照、索引规则发生变更时，运行 `pnpm --filter @rev30/server icon-search:build` 并重启服务。发布构建会自动生成搜索产物。详见[图标搜索维护说明](apps/server/resources/icon-search/README.md)。
+仅更新中文查询词典时，重启服务即可生效并复用现有数据库索引。搜索产物缺失或图标包、官方中文快照、索引规则发生变更时，运行 `pnpm --filter @rev30/server icon-search:build` 并重启服务。发布构建会自动从仓库内的快照生成搜索产物。详见[图标搜索维护说明](apps/server/resources/icon-search/README.md)。
 
 从旧版搜索索引升级到当前格式时，在启动服务前应用随版本提供的数据库迁移。索引更新需要交换 `icon_search_documents` 与 `icon_search_documents_staging` 及其索引，生产数据库连接角色必须拥有这些对象。
 
@@ -102,6 +102,7 @@ pnpm dev:server
 pnpm dev:client
 pnpm dev:playground:rich-text
 pnpm --filter @rev30/rich-text-playground exec playwright install chromium
+pnpm deps:update
 pnpm check
 pnpm test
 pnpm coverage
@@ -112,6 +113,8 @@ pnpm build
 pnpm --filter @rev30/server db:generate
 pnpm --filter @rev30/server db:migrate
 ```
+
+在仓库根目录运行 `pnpm deps:update` 维护依赖。它先用 `pnpm -r update` 更新 workspace，再检查图标搜索的官方中文数据。依赖默认按已有版本范围升级，可以传入包名或 `--latest`。有中文数据变更时，终端会给出本地补丁，供审阅后与依赖更新一起提交。[图标搜索维护说明](apps/server/resources/icon-search/README.md)
 
 `pnpm coverage` 生成各测试 package 的 V8 覆盖率报告，不包含在 `pnpm check` 中。单包和定向测试分别使用 `pnpm --filter <pkg> coverage`、`pnpm --filter <pkg> test <package-relative-test-file>`。
 

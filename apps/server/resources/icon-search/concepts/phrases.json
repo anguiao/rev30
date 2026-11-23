@@ -1107,8 +1107,9 @@
   {
     "zh": ["屏幕共享", "共享屏幕"],
     "en": ["screen-share", "share-screen"],
-    "exclude": ["share-screen-stop", "screen-share-off"]
+    "exclude": ["share-screen-stop", "stop-screen-share", "screen-share-off"]
   },
+  { "zh": ["停止共享屏幕"], "en": ["share-screen-stop", "stop-screen-share", "screen-share-off"] },
   { "zh": ["快递配送"], "en": ["express-delivery"] },
   { "zh": ["邮件附件"], "en": ["email-attachment"] },
   { "zh": ["账户安全", "账号安全"], "en": ["account-security", "security-account"] },

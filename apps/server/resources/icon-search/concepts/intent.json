@@ -228,7 +228,7 @@
   { "zh": ["部署"], "intentEn": ["rocket", "cloud-upload", "server"] },
   { "zh": ["启动"], "intentEn": ["play", "power"] },
   { "zh": ["屏幕共享", "共享屏幕"], "intentEn": ["monitor-up", "presentation"] },
-  { "zh": ["停止共享屏幕"], "intentEn": ["screen-share-off", "monitor-off"] },
+  { "zh": ["停止共享屏幕"], "intentEn": ["monitor-off"] },
   { "zh": ["源代码", "源码"], "intentEn": ["code", "file-code"] },
   { "zh": ["电路板"], "intentEn": ["circuit-board", "cpu"] },
   { "zh": ["网关"], "intentEn": ["router", "network", "ethernet-port"] },

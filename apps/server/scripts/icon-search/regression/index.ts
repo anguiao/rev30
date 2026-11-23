@@ -205,10 +205,26 @@ void describe('Common admin menus and actions', () => {
 })
 
 void describe('Direct and intended meanings on the first page', () => {
+  for (const [prefix, active, stopped] of [
+    ['fluent', 'share-screen-20-regular', 'share-screen-stop-20-regular'],
+    ['ic', 'baseline-screen-share', 'baseline-stop-screen-share'],
+    ['material-symbols', 'screen-share', 'stop-screen-share'],
+    ['lucide', 'screen-share', 'screen-share-off'],
+  ] as const) {
+    void it(`distinguishes sharing a screen from stopping it in ${prefix}`, async () => {
+      const sharing = await completeSearch('共享屏幕', { prefix })
+      assert(requireHit(sharing, [active], 'name').tier <= 1)
+      assert(
+        !sharing.some(({ name }) =>
+          /share-screen-stop|stop-screen-share|screen-share-off/.test(name),
+        ),
+      )
+      const stopping = await search('停止共享屏幕', { prefix })
+      assert(requireHit(stopping.rows, [stopped], 'name').tier <= 1)
+    })
+  }
+
   void it('matches compound intents without admitting unrelated or opposite actions', async () => {
-    const screens = await completeSearch('共享屏幕', { prefix: 'fluent' })
-    assert.equal(requireHit(screens, ['fluent:share-screen-20-regular']).tier, 1)
-    assert(!screens.some(({ name }) => name.startsWith('share-screen-stop')))
     requireHit((await search('设置密码', { prefix: 'tabler' })).rows, ['tabler:lock-cog'])
     requireHit((await search('表格导入', { prefix: 'tabler' })).rows, ['tabler:table-import'])
 

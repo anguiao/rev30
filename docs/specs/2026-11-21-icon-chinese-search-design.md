@@ -307,7 +307,8 @@ ORDER BY tier ASC, match_score DESC, rank DESC, preference DESC, id COLLATE "C" 
    - 搜 `通知`：前 12 项同时出现直译图标（如 `notification` 系列）与主力用途图标 `lucide:bell`；
    - 搜 `删除`：前 12 项同时出现 `delete` 系列与主力用途图标 `lucide:trash` / `lucide:trash-2`；
    - 搜 `首页`：前 12 项覆盖 `home` 与 `lucide:house`。
-   - 在 Fluent 中搜“共享屏幕”可找到 `share-screen-20-regular`，排除停止共享的 `share-screen-stop` 系列。在 Tabler 中搜“设置密码”可找到 `lock-cog`。“添加备注”可找到便笺图标，排除仅表示添加音符的名称。
+   - 搜“共享屏幕”可找到 Fluent 的 `share-screen-20-regular` 或 Google Material 的 `baseline-screen-share`。Fluent 的 `share-screen-stop`、Google Material 的 `stop-screen-share` 和 Lucide 的 `screen-share-off` 均归入“停止共享屏幕”。
+   - 在 Tabler 中搜“设置密码”可找到 `lock-cog`。“添加备注”可找到便笺图标，排除仅表示添加音符的名称。
 3. **写法变体互通（约 8～12 条）**：`打开文件夹` / `打开 文件夹` / `打开的文件夹`（命中 `folder-open` 等）；`K线图` / `K 线图` / `股票图`；`四级标题` / `4级标题` / `标题4` / `标题级别4`（均命中 `heading-4`）；`AVI文件` / `AVI 文件`；`信用卡` / `贷记卡`。
    - 在 `mdi` 集合中搜“文件恢复”或“恢复文件”，前 12 项均直接命中 `mdi:file-restore`。
 4. **官方中文直出（约 6～10 条）**：`俄罗斯方块`（命中 `icon-park*:block-seven`）、`笑哭` / `火箭`（命中 Emoji 集合）、`中国` / `日本`（命中国旗集合）。

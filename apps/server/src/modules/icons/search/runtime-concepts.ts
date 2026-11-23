@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { Logger } from 'pino'
 import { IconSearchUnavailableError } from '../errors'
 import { defaultIconSearchArtifactDirectory } from './artifacts/reader'
 import { loadIconSearchConcepts, type IconSearchConceptDictionary } from './concepts'
@@ -18,6 +19,12 @@ export async function initializeRuntimeIconSearchConcepts(directory = defaultCon
   const startup: ConceptStartup = {}
   activeStartup = startup
   startup.dictionary = await loadIconSearchConcepts(directory)
+}
+
+export function startIconSearchConcepts(logger: Pick<Logger, 'error'>) {
+  return initializeRuntimeIconSearchConcepts().catch((error: unknown) => {
+    logger.error({ err: error }, 'icon search concept dictionary initialization failed')
+  })
 }
 
 export function getRuntimeIconSearchConcepts(): IconSearchConceptDictionary {

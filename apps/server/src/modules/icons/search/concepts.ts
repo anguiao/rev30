@@ -3,23 +3,14 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { normalizeSearchText } from '@rev30/utils'
 import { z } from 'zod'
-import { compactIconSearchKey, hanCharacterPattern } from './normalization'
+import { iconSearchCategorySchema, type IconSearchCategory } from './facts'
+import { compactIconSearchKey, hanCharacterPattern } from './text'
 
 // Increment when query parsing or ranking changes, independently of the index rules.
 const queryRulesRevision = 4
 const conceptFiles = ['words', 'phrases', 'intent'] as const
 type ConceptFile = (typeof conceptFiles)[number]
 type ConceptSources = Readonly<Record<ConceptFile, unknown>>
-
-export const iconSearchCategorySchema = z.enum([
-  'ui',
-  'brand',
-  'programming',
-  'emoji',
-  'flag',
-  'other',
-  'custom',
-])
 
 const chineseKeySchema = z.string().regex(hanCharacterPattern)
 const englishTargetSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
@@ -39,8 +30,6 @@ const conceptRecordSchema = z
   })
 
 const conceptFileSchema = z.array(conceptRecordSchema)
-
-export type IconSearchCategory = z.infer<typeof iconSearchCategorySchema>
 
 export type IconSearchConcept = {
   readonly zh: readonly string[]

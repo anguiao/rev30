@@ -1,6 +1,5 @@
 import { and, not, or, sql, type SQL } from 'drizzle-orm'
 import type { IconSearchConcept } from './concepts'
-import { hanCharacterPattern } from './normalization'
 import type {
   ChineseIconSearchQuery,
   IconSearchQueryFragment,
@@ -8,6 +7,7 @@ import type {
   IconSearchQueryUnit,
 } from './planner'
 import { preferredIconPrefixes } from './rules'
+import { hanCharacterPattern } from './text'
 
 type SearchTier = { tier: number; condition: SQL; matchScore: SQL }
 type RankedQuery = { tiers: SearchTier[]; rank: SQL }

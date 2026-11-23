@@ -30,7 +30,7 @@ import {
   type TiptapDocument,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import type { IconSearchCategory } from '../modules/icons/search/concepts'
+import type { IconSearchCategory } from '../modules/icons/search/facts'
 
 const timestampOptions = { withTimezone: true } as const
 const tsvector = customType<{ data: string }>({

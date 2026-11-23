@@ -5,7 +5,7 @@ import {
   lockIconSearchWrites,
   type IconSearchStateInput,
 } from '../../src/modules/icons/search/indexing/state'
-import { insertDocumentBatch } from '../../src/modules/icons/search/indexing/sync'
+import { insertDocumentBatch } from '../../src/modules/icons/search/indexing/documents'
 import { ICON_SEARCH_INDEX_RULES_VERSION } from '../../src/modules/icons/search/rules'
 
 export const testIconSearchState = {

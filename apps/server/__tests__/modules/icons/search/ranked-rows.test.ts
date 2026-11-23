@@ -1,10 +1,10 @@
 import { expect, vi } from 'vitest'
+import { compileIconSearchConcepts } from '../../../../src/modules/icons/search/concepts'
 import {
-  compileIconSearchConcepts,
+  deriveIconSearchFacts,
   type IconSearchCategory,
-} from '../../../../src/modules/icons/search/concepts'
-import { deriveIconSearchFacts } from '../../../../src/modules/icons/search/facts'
-import { insertDocumentBatch } from '../../../../src/modules/icons/search/indexing/sync'
+} from '../../../../src/modules/icons/search/facts'
+import { insertDocumentBatch } from '../../../../src/modules/icons/search/indexing/documents'
 import { planIconSearchQuery } from '../../../../src/modules/icons/search/planner'
 import { findRankedIconSearchRows } from '../../../../src/modules/icons/search/ranked-rows'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'

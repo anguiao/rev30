@@ -1,11 +1,9 @@
-import type {
-  IconSearchCategory,
-  IconSearchConceptDictionary,
-} from '../../../src/modules/icons/search/concepts'
+import type { IconSearchConceptDictionary } from '../../../src/modules/icons/search/concepts'
 import {
   deriveIconSearchFacts,
   deriveIconSearchName,
   iconSearchVectorTerms,
+  type IconSearchCategory,
   type IconSearchFacts,
 } from '../../../src/modules/icons/search/facts'
 import { deriveSearchText } from '../../../src/modules/icons/search/text'

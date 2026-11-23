@@ -9,8 +9,8 @@ import {
   iconSearchIndexState,
 } from '../../../../db/schema'
 import { deriveCustomIconSearchFacts, type IconSearchFacts } from '../facts'
+import { iconSearchDocumentColumns, insertDocumentBatch } from './documents'
 import { lockIconSearchWrites, type IconSearchStateInput } from './state'
-import { iconSearchDocumentColumns, insertDocumentBatch } from './sync'
 
 const importTable = getTableName(iconSearchDocumentsStaging)
 const importBatchSize = 1_000

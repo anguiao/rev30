@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 
+import { hanCharacterPattern } from '../../../src/modules/icons/search/text'
 import { officialSnapshotNames, type IconSearchResourceManifest } from '../resource-manifest'
 
 export type OfficialIconText = {
@@ -25,7 +26,7 @@ export type OfficialIconSearchData = {
   forCollection(collection: OfficialIconCollection): IconTextLookup
 }
 
-const labelSchema = z.string().regex(/\p{Script=Han}/u)
+const labelSchema = z.string().regex(hanCharacterPattern)
 const annotationSchema = z
   .strictObject({ titles: z.array(labelSchema), tags: z.array(labelSchema) })
   .refine(({ titles, tags }) => titles.length + tags.length > 0)

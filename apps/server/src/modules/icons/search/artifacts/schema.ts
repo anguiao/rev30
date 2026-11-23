@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto'
 import { completeIconIdSchema, iconifyIconNamePartPatternSource } from '@rev30/contracts'
 import { z } from 'zod'
-import { iconSearchCategorySchema } from '../concepts'
-import { iconSearchFactsSchema } from '../facts'
-import { hanCharacterPattern } from '../normalization'
+import { iconSearchCategorySchema, iconSearchFactsSchema } from '../facts'
+import { hanCharacterPattern } from '../text'
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/)
 export const artifactFileSuffix = '.jsonl.gz'

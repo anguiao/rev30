@@ -1,9 +1,17 @@
 import { normalizeSearchText } from '@rev30/utils'
 import { z } from 'zod'
 
-import { iconSearchCategorySchema, type IconSearchCategory } from './concepts'
-import { compactIconSearchKey } from './normalization'
-import { deriveSearchText } from './text'
+import { asciiEnglishTermPattern, deriveSearchText, iconSearchPhraseKeys } from './text'
+
+export const iconSearchCategorySchema = z.enum([
+  'ui',
+  'brand',
+  'programming',
+  'emoji',
+  'flag',
+  'other',
+  'custom',
+])
 
 const iconSearchMetadataSchema = z.strictObject({
   id: z.string().min(1),
@@ -29,6 +37,7 @@ export const iconSearchFactsSchema = iconSearchMetadataSchema.extend({
   auxiliaryEnglishTerms: z.array(z.string()),
 })
 
+export type IconSearchCategory = z.infer<typeof iconSearchCategorySchema>
 export type IconSearchMetadata = z.infer<typeof iconSearchMetadataSchema>
 export type IconSearchFacts = z.infer<typeof iconSearchFactsSchema>
 
@@ -47,7 +56,6 @@ type SearchFields = {
   categories?: readonly string[]
 }
 
-const englishWordPattern = /^[a-z]+$/
 const asciiTermPattern = /^[a-z0-9]+$/
 
 export function deriveIconSearchName(name: string) {
@@ -63,11 +71,6 @@ function distinctSorted(terms: Iterable<string>): string[] {
   return [...new Set(terms)].sort()
 }
 
-function phraseKeys(phrase: string): string[] {
-  const compact = compactIconSearchKey(phrase)
-  return compact === phrase ? [phrase] : [phrase, compact]
-}
-
 export function deriveIconSearchFacts<
   Metadata extends IconSearchMetadata & { category: IconSearchCategory },
 >(icon: Metadata, { keywords = [], titles = [], tags = [], categories = [] }: SearchFields) {
@@ -81,14 +84,14 @@ export function deriveIconSearchFacts<
   const primaryKeys = [
     ...keywordEntries.map(({ phrase }) => phrase),
     ...titles.map(normalizeSearchText),
-  ].flatMap(phraseKeys)
+  ].flatMap(iconSearchPhraseKeys)
   const primaryTokens = distinctSorted([...name.terms, ...keywordTokens, ...primaryKeys])
   // The English rank vector preserves the original two groups and their term order.
   const primaryEnglishTerms = new Set(
-    [...name.terms, ...keywordTokens].filter((token) => englishWordPattern.test(token)),
+    [...name.terms, ...keywordTokens].filter((token) => asciiEnglishTermPattern.test(token)),
   )
   const auxiliaryEnglishTerms = [...categoryTokens, ...collectionTokens].filter(
-    (token) => englishWordPattern.test(token) && !primaryEnglishTerms.has(token),
+    (token) => asciiEnglishTermPattern.test(token) && !primaryEnglishTerms.has(token),
   )
 
   return {
@@ -96,7 +99,7 @@ export function deriveIconSearchFacts<
     exactKeys: [...new Set([name.key, ...primaryKeys])],
     tokens: distinctSorted([...primaryTokens, ...categoryTokens, ...collectionTokens]),
     primaryTokens,
-    relatedTokens: distinctSorted(tags.map(normalizeSearchText).flatMap(phraseKeys)),
+    relatedTokens: distinctSorted(tags.map(normalizeSearchText).flatMap(iconSearchPhraseKeys)),
     primaryNameText: name.terms.join(' '),
     keywordText: distinctSorted(iconSearchVectorTerms(keywordTokens)).join(' '),
     categoryText: distinctSorted(iconSearchVectorTerms(categoryTokens)).join(' '),

@@ -1,11 +1,15 @@
 import { completeIconIdSchema } from '@rev30/contracts'
 import { normalizeSearchText } from '@rev30/utils'
 import type { IconSearchConcept, IconSearchConceptDictionary } from './concepts'
-import { compactIconSearchKey, hanCharacterPattern } from './normalization'
-import { deriveSearchText } from './text'
+import {
+  asciiEnglishTermPattern,
+  compactIconSearchKey,
+  deriveSearchText,
+  hanCharacterPattern,
+  iconSearchPhraseKeys,
+} from './text'
 
 const maxExpandedUnits = 8
-const englishWordPattern = /^[a-z]+$/
 const queryFragmentPattern =
   /(?<!\S)(?:([一二三四五六1-6]) ?级 ?标题|标题 ?(?:级别 ?)?([1-6])|\S+)(?!\S)/gu
 const mixedSpanPattern =
@@ -81,7 +85,7 @@ function segmentHan(span: string, dictionary: IconSearchConceptDictionary): Draf
 }
 
 function nonHanUnit(key: string): DraftUnit {
-  return { kind: englishWordPattern.test(key) ? 'english' : 'literal', key }
+  return { kind: asciiEnglishTermPattern.test(key) ? 'english' : 'literal', key }
 }
 
 function segmentFragment(text: string, dictionary: IconSearchConceptDictionary): DraftUnit[] {
@@ -162,9 +166,7 @@ function compileFragments(
     if (compiled.length === 0) return []
 
     const originalKeys =
-      units.length > 1 && hanCharacterPattern.test(text)
-        ? [...new Set([text, compactIconSearchKey(text)])]
-        : []
+      units.length > 1 && hanCharacterPattern.test(text) ? iconSearchPhraseKeys(text) : []
     return [{ units: compiled, originalKeys, exactNames: allowExactNames ? exactNames : [] }]
   })
 }

@@ -1,20 +1,23 @@
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { IconSearchUnavailableError } from '../errors'
+import { defaultIconSearchArtifactDirectory } from './artifacts/reader'
 import { loadIconSearchConcepts, type IconSearchConceptDictionary } from './concepts'
+
+// tsup supplies the dictionary subdirectory relative to the published search artifacts.
+declare const __PACKAGED_ICON_SEARCH_CONCEPTS_DIR__: string
+const defaultConceptsDirectory =
+  typeof __PACKAGED_ICON_SEARCH_CONCEPTS_DIR__ === 'string'
+    ? join(defaultIconSearchArtifactDirectory, __PACKAGED_ICON_SEARCH_CONCEPTS_DIR__)
+    : fileURLToPath(new URL('../../../../resources/icon-search/concepts', import.meta.url))
 
 type ConceptStartup = { dictionary?: IconSearchConceptDictionary }
 let activeStartup: ConceptStartup = {}
 
-export async function initializeRuntimeIconSearchConcepts(moduleUrl = import.meta.url) {
+export async function initializeRuntimeIconSearchConcepts(directory = defaultConceptsDirectory) {
   const startup: ConceptStartup = {}
   activeStartup = startup
-  // The production build bundles this module into dist/index.js.
-  const relativeDirectory = moduleUrl.endsWith('/dist/index.js')
-    ? './icon-search/concepts'
-    : '../../../../resources/icon-search/concepts'
-  startup.dictionary = await loadIconSearchConcepts(
-    fileURLToPath(new URL(relativeDirectory, moduleUrl)),
-  )
+  startup.dictionary = await loadIconSearchConcepts(directory)
 }
 
 export function getRuntimeIconSearchConcepts(): IconSearchConceptDictionary {

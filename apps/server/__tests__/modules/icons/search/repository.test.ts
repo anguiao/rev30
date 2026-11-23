@@ -1,9 +1,8 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { beforeAll, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { iconSearchDocuments, iconSearchIndexState } from '../../../../src/db/schema'
 import { migratePGlite } from '../../../../src/db/migrate'
@@ -246,16 +245,12 @@ describe('database icon search', () => {
         await initializeRuntimeIconSearchConcepts()
         await rm(directory, { recursive: true, force: true })
       })
-      const concepts = join(directory, 'dist/icon-search/concepts')
-      await mkdir(concepts, { recursive: true })
       await Promise.all([
-        writeFile(join(concepts, 'words.json'), JSON.stringify([{ zh: ['相机'], en: ['bell'] }])),
-        writeFile(join(concepts, 'phrases.json'), '[]'),
-        writeFile(join(concepts, 'intent.json'), '[]'),
+        writeFile(join(directory, 'words.json'), JSON.stringify([{ zh: ['相机'], en: ['bell'] }])),
+        writeFile(join(directory, 'phrases.json'), '[]'),
+        writeFile(join(directory, 'intent.json'), '[]'),
       ])
-      await initializeRuntimeIconSearchConcepts(
-        pathToFileURL(join(directory, 'dist/index.js')).href,
-      )
+      await initializeRuntimeIconSearchConcepts(directory)
       const iterate = vi.fn(function* () {
         yield builtinSearchFacts('lucide', 'camera')
       })

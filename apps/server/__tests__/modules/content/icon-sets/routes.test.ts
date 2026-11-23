@@ -11,7 +11,6 @@ import type { IconifyJSON } from '@iconify/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { afterEach, beforeAll, describe, expect, onTestFinished, vi } from 'vitest'
 import { createApp } from '../../../helpers/app'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
@@ -60,8 +59,7 @@ describe('icon set routes', () => {
         await initializeRuntimeIconSearchConcepts()
         await rm(directory, { recursive: true, force: true })
       })
-      const moduleUrl = pathToFileURL(join(directory, 'dist/index.js')).href
-      await expect(initializeRuntimeIconSearchConcepts(moduleUrl)).rejects.toThrow(/ENOENT/)
+      await expect(initializeRuntimeIconSearchConcepts(directory)).rejects.toThrow(/ENOENT/)
       setIconSearchStatus('preparing')
       const { authHeaders: headers } = await createSystemAccessFixture(db, {
         accessCodes: ['content:icon-set:list'],

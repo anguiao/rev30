@@ -43,7 +43,6 @@ describe('icon search dictionary', () => {
       config: 'tsup.config.ts',
       entry: { server: entry, worker: entry },
       outDir: join(serverDirectory, 'dist'),
-      clean: false,
       silent: true,
       noExternal: [/.*/],
       splitting: true,

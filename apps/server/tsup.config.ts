@@ -5,7 +5,8 @@ export default defineConfig({
   banner: {
     js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url)",
   },
-  clean: true,
+  // The artifact builder replaces the previous index after validating its staged output.
+  clean: ['!icon-search/**'],
   define: { __PACKAGED_ICON_SEARCH_CONCEPTS_DIR__: JSON.stringify('concepts') },
   entry: ['src/index.ts'],
   format: ['esm'],

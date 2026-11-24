@@ -11,6 +11,14 @@ export const operationLogModuleSchema = z.enum(
   '操作日志模块无效',
 )
 
+export const operationLogCollectionActions = [
+  'system:user:list',
+  'system:role:list',
+  'system:resource:list',
+  'ops:login-log:list',
+  'ops:online-session:list',
+] as const
+
 export const operationLogActionSchema = z.enum(
   [
     'system:config:update',
@@ -51,9 +59,22 @@ export const operationLogActionSchema = z.enum(
     'ops:scheduled-job:disable',
     'ops:scheduled-job:execute',
     'ops:scheduled-job:cancel',
+    ...operationLogCollectionActions,
+    'system:user:view',
+    'system:role:view',
+    'system:resource:view',
+    'ops:operation-log:view',
   ],
   '操作日志动作无效',
 )
+
+const operationLogCollectionActionSet = new Set<OperationLogAction>(operationLogCollectionActions)
+
+export function isOperationLogCollectionAction(
+  action: OperationLogAction,
+): action is OperationLogCollectionAction {
+  return operationLogCollectionActionSet.has(action)
+}
 
 export const OPERATION_LOG_RESULT_SUCCESS = 'success'
 export const OPERATION_LOG_RESULT_FAILURE = 'failure'
@@ -144,10 +165,13 @@ function validateOperationLogRecord(
     })
   }
 
-  if (value.targetKey === null && value.targetLabel === null) {
+  const requiresEmptyTarget = isOperationLogCollectionAction(value.action)
+  const hasEmptyTarget = value.targetKey === null && value.targetLabel === null
+
+  if (requiresEmptyTarget !== hasEmptyTarget) {
     context.addIssue({
       code: 'custom',
-      message: '操作日志至少需要一个目标',
+      message: requiresEmptyTarget ? '集合操作日志的目标必须为空' : '操作日志至少需要一个目标',
       path: ['targetKey'],
     })
   }
@@ -192,6 +216,7 @@ export const operationLogDetailPathSchema = z.object({
 
 export type OperationLogModule = z.infer<typeof operationLogModuleSchema>
 export type OperationLogAction = z.infer<typeof operationLogActionSchema>
+export type OperationLogCollectionAction = (typeof operationLogCollectionActions)[number]
 export type OperationLogResult = z.infer<typeof operationLogResultSchema>
 export type OperationLogListQuery = z.infer<typeof operationLogListQuerySchema>
 export type OperationLogListItem = z.infer<typeof operationLogListItemSchema>

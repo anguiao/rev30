@@ -197,6 +197,70 @@ describe('operation logs page', () => {
     expect(detailText).not.toMatch(/导出|删除|清空|批量|JSON/)
   })
 
+  it('shows audited read actions and their targets alongside historical actions', async () => {
+    const collection = {
+      ...listResponse.list[0]!,
+      id: '55555555-5555-4555-8555-555555555555',
+      action: 'system:user:list',
+      targetKey: null,
+      targetLabel: null,
+    } as const
+    const view = {
+      ...listResponse.list[0]!,
+      id: '66666666-6666-4666-8666-666666666666',
+      action: 'system:user:view',
+      targetKey: actorUserId,
+      targetLabel: null,
+    } as const
+    const legacy = {
+      ...listResponse.list[0]!,
+      module: 'content',
+      action: 'content:icon:rename',
+      targetType: 'icon',
+      targetKey: 'example:icon',
+      targetLabel: null,
+    } as const
+    listMock.mockResolvedValue({ ...listResponse, list: [collection, view, legacy], total: 3 })
+    detailMock.mockResolvedValue({ ...detail, ...collection })
+    const { wrapper } = await mountPage()
+    await flushPromises()
+    const [collectionRow, viewRow, legacyRow] = wrapper.findAll('tbody tr')
+    expect(collectionRow?.text()).toContain('查询用户列表')
+    expect(collectionRow?.findAll('td').map((cell) => cell.text())).toContain('-')
+    expect(viewRow?.text()).toContain('查看用户详情')
+    expect(viewRow?.text()).toContain(actorUserId)
+    expect(legacyRow?.text()).toContain('重命名图标')
+    expect(legacyRow?.text()).toContain('example:icon')
+
+    const moduleSelect = getSelect(wrapper, 'operation-logs-module')
+    const actionSelect = getSelect(wrapper, 'operation-logs-action')
+    moduleSelect.vm.$emit('update:value', 'system')
+    await flushPromises()
+    expect(actionSelect.props('options')).toEqual(
+      expect.arrayContaining([
+        { label: '查询用户列表', value: 'system:user:list' },
+        { label: '查看用户详情', value: 'system:user:view' },
+        { label: '更新用户', value: 'system:user:update' },
+      ]),
+    )
+    actionSelect.vm.$emit('update:value', 'system:user:list')
+    await wrapper.get('[data-test="operation-logs-search"]').trigger('click')
+    await flushPromises()
+    expect(listMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ module: 'system', action: 'system:user:list' }),
+    )
+
+    await collectionRow!.get('[data-test="operation-log-detail"]').trigger('click')
+    await vi.waitFor(() => expect(detailMock).toHaveBeenCalledWith(collection.id))
+    await flushPromises()
+    const drawer = document.querySelector('[data-test="operation-log-detail-drawer"]')
+    expect(drawer?.textContent).toContain('查询用户列表')
+    const target = Array.from(drawer?.querySelectorAll('th') ?? []).find(
+      (heading) => heading.textContent === '目标',
+    )
+    expect(target?.nextElementSibling?.textContent).toBe('-')
+  })
+
   it('reports clipboard failures without rejecting the detail interaction', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('clipboard unavailable'))
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })

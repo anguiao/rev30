@@ -28,6 +28,20 @@ const listItem = {
   createdAt: '2026-08-18T00:00:00.000Z',
 }
 
+const detailItem = {
+  ...listItem,
+  actorIsAdmin: true,
+  actorSessionId: testUuid(3),
+  requestId: testUuid(4),
+  clientIpSource: 'x-forwarded-for',
+  userAgent: {
+    raw: 'Example/1.0',
+    browser: { name: 'Example', version: null },
+    operatingSystem: null,
+    deviceType: 'desktop',
+  },
+}
+
 describe('operation log schemas', () => {
   it('accepts defined module, action and result values and rejects unknown values', () => {
     expect(operationLogModuleSchema.parse('system')).toBe('system')
@@ -182,22 +196,9 @@ describe('operation log schemas', () => {
   })
 
   it('parses exact detail responses with user-agent structure', () => {
-    const input = {
-      ...listItem,
-      actorIsAdmin: true,
-      actorSessionId: testUuid(3),
-      requestId: testUuid(4),
-      clientIpSource: 'x-forwarded-for',
-      userAgent: {
-        raw: 'Example/1.0',
-        browser: { name: 'Example', version: null },
-        operatingSystem: null,
-        deviceType: 'desktop',
-      },
-    }
-    const detail = operationLogDetailSchema.parse(input)
+    const detail = operationLogDetailSchema.parse(detailItem)
 
-    expect(detail).toMatchObject(input)
+    expect(detail).toMatchObject(detailItem)
     expect(detail.userAgent).toEqual({
       raw: 'Example/1.0',
       browser: { name: 'Example', version: null },
@@ -205,9 +206,50 @@ describe('operation log schemas', () => {
       deviceType: 'desktop',
     })
     expectZodIssue(
-      operationLogDetailSchema.safeParse({ ...input, details: { password: 'secret' } }),
+      operationLogDetailSchema.safeParse({ ...detailItem, details: { password: 'secret' } }),
       { code: 'unrecognized_keys', keys: ['details'], path: [] },
     )
+  })
+
+  it.each([
+    'system:user:list',
+    'system:role:list',
+    'system:resource:list',
+    'ops:login-log:list',
+    'ops:online-session:list',
+  ])('requires empty targets in list and detail for %s', (action) => {
+    const [module, targetType] = action.split(':')
+    const collection = { module, action, targetType, targetKey: null, targetLabel: null }
+
+    for (const [schema, item] of [
+      [operationLogListItemSchema, { ...listItem, ...collection }],
+      [operationLogDetailSchema, { ...detailItem, ...collection }],
+    ] as const) {
+      expect(schema.parse(item)).toEqual(item)
+
+      for (const field of ['targetKey', 'targetLabel'] as const) {
+        expectZodIssue(schema.safeParse({ ...item, [field]: 'entity target' }), {
+          message: '集合操作日志的目标必须为空',
+          path: ['targetKey'],
+        })
+      }
+    }
+  })
+
+  it.each([
+    'system:user:view',
+    'system:role:view',
+    'system:resource:view',
+    'ops:operation-log:view',
+  ])('accepts an ID-only target and requires a target for %s', (action) => {
+    const [module, targetType] = action.split(':')
+    const item = { ...listItem, module, action, targetType, targetLabel: null }
+
+    expect(operationLogListItemSchema.parse(item)).toEqual(item)
+    expectZodIssue(operationLogListItemSchema.safeParse({ ...item, targetKey: null }), {
+      message: '操作日志至少需要一个目标',
+      path: ['targetKey'],
+    })
   })
 
   it('rejects inconsistent operation-log response records', () => {

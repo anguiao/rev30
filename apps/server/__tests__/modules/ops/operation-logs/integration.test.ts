@@ -200,6 +200,77 @@ describe('operation log query API', () => {
     ).toEqual([])
   })
 
+  dbTest('queries collection and entity reads alongside historical actions', async ({ db }) => {
+    const reader = await createSystemAccessFixture(db, {
+      accessCodes: ['ops:operation-log:list'],
+      usernamePrefix: 'operation-log-sensitive-read-reader',
+    })
+    const collectionId = randomUUID()
+    const viewId = randomUUID()
+    const legacyId = randomUUID()
+    await db.insert(opsOperationLogs).values([
+      operationLog({
+        id: collectionId,
+        action: 'system:user:list',
+        targetKey: null,
+        targetLabel: null,
+      }),
+      operationLog({
+        id: viewId,
+        action: 'system:user:view',
+        targetKey: actorUserId,
+        targetLabel: null,
+      }),
+      operationLog({
+        id: legacyId,
+        module: 'content',
+        action: 'content:icon:rename',
+        targetType: 'icon',
+        targetKey: 'example:icon',
+      }),
+    ])
+    const app = createApp(db)
+    const request = async (path = '') => {
+      const response = await app.request(`/api/ops/operation-logs${path}`, {
+        headers: reader.authHeaders,
+      })
+      expect(response.status).toBe(200)
+      return response.json()
+    }
+
+    const page = operationLogListResponseSchema.parse(await request())
+    expect(page.total).toBe(3)
+    expect(page.list.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([collectionId, viewId, legacyId]),
+    )
+
+    const collection = {
+      id: collectionId,
+      action: 'system:user:list',
+      targetKey: null,
+      targetLabel: null,
+    }
+    const filteredCollection = operationLogListResponseSchema.parse(
+      await request('?module=system&action=system:user:list'),
+    )
+    expect(filteredCollection.list).toMatchObject([collection])
+    expect(operationLogDetailSchema.parse(await request(`/${collectionId}`))).toMatchObject(
+      collection,
+    )
+
+    const filteredTarget = operationLogListResponseSchema.parse(
+      await request(`?targetKeyword=${actorUserId}`),
+    )
+    expect(filteredTarget.list).toMatchObject([
+      { id: viewId, action: 'system:user:view', targetKey: actorUserId, targetLabel: null },
+    ])
+    expect(
+      operationLogListResponseSchema.parse(
+        await request('?module=content&action=content:icon:rename'),
+      ).list,
+    ).toMatchObject([{ id: legacyId, action: 'content:icon:rename' }])
+  })
+
   dbTest('returns detail mapping and boundary errors without recording reads', async ({ db }) => {
     const events: OperationLogEvent[] = []
     const reader = await createSystemAccessFixture(db, {

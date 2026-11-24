@@ -61,6 +61,15 @@ export const operationLogActionLabels = {
   'ops:scheduled-job:disable': '禁用定时任务',
   'ops:scheduled-job:execute': '执行定时任务',
   'ops:scheduled-job:cancel': '取消定时任务',
+  'system:user:list': '查询用户列表',
+  'system:role:list': '查询角色列表',
+  'system:resource:list': '查询权限资源',
+  'ops:login-log:list': '查询登录日志',
+  'ops:online-session:list': '查询在线会话',
+  'system:user:view': '查看用户详情',
+  'system:role:view': '查看角色详情',
+  'system:resource:view': '查看权限资源详情',
+  'ops:operation-log:view': '查看操作日志详情',
 } as const satisfies Record<OperationLogAction, string>
 
 export const operationLogModuleOptions: Array<{

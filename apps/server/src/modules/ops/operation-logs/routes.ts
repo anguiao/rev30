@@ -10,11 +10,7 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  operationLogIdTarget,
-  type OperationLogEnv,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import { OperationLogNotFoundError } from './errors'
 import { createOperationLogService } from './service'
@@ -68,7 +64,10 @@ export function createOperationLogRoutes(database: Db) {
       '/:id',
       requireAccess('ops:operation-log:list'),
       operationLogIdValidator,
-      operationLog('ops:operation-log:view', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'ops:operation-log:view', () => ({
+          targetKey: c.req.valid('param').id,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
 

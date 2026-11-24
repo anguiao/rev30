@@ -25,7 +25,7 @@ export function createLoginLogRoutes(database: Db) {
     '/',
     requireAccess('ops:login-log:list'),
     loginLogQueryValidator,
-    operationLog('ops:login-log:list'),
+    (c, next) => operationLog(c, next, 'ops:login-log:list'),
     async (c) => {
       const query: LoginLogListQuery = c.req.valid('query')
 

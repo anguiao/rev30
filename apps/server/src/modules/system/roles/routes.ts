@@ -14,16 +14,8 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  operationLogIdTarget,
-  type OperationLogEnv,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
-import {
-  operationLogCodeAndNameTarget,
-  operationLogIdAndNameTarget,
-} from '../operation-log-targets'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,
@@ -109,7 +101,7 @@ export function createRoleRoutes(database: Db) {
       '/',
       requireAccess('system:role:list'),
       roleListQueryValidator,
-      operationLog('system:role:list'),
+      (c, next) => operationLog(c, next, 'system:role:list'),
       async (c) => {
         const query: RoleListQuery = c.req.valid('query')
 
@@ -125,7 +117,8 @@ export function createRoleRoutes(database: Db) {
       '/:id',
       requireAccess('system:role:list'),
       roleIdValidator,
-      operationLog('system:role:view', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:role:view', () => ({ targetKey: c.req.valid('param').id })),
       async (c) => {
         const { id } = c.req.valid('param')
 
@@ -136,7 +129,12 @@ export function createRoleRoutes(database: Db) {
       '/',
       requireAccess('system:role:create'),
       roleCreateBodyValidator,
-      operationLog('system:role:create', operationLogCodeAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:role:create', () => {
+          const { code, name } = c.req.valid('json')
+
+          return { targetKey: code, targetLabel: name }
+        }),
       async (c) => {
         const body: RoleCreateInput = c.req.valid('json')
 
@@ -154,7 +152,11 @@ export function createRoleRoutes(database: Db) {
       requireAccess('system:role:update'),
       roleIdValidator,
       roleUpdateBodyValidator,
-      operationLog('system:role:update', operationLogIdAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:role:update', () => ({
+          targetKey: c.req.valid('param').id,
+          targetLabel: c.req.valid('json').name,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: RoleUpdateInput = c.req.valid('json')
@@ -171,7 +173,8 @@ export function createRoleRoutes(database: Db) {
       '/:id',
       requireAccess('system:role:delete'),
       roleIdValidator,
-      operationLog('system:role:delete', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:role:delete', () => ({ targetKey: c.req.valid('param').id })),
       async (c) => {
         const { id } = c.req.valid('param')
 

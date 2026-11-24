@@ -14,16 +14,8 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  operationLogIdTarget,
-  type OperationLogEnv,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
-import {
-  operationLogCodeAndNameTarget,
-  operationLogIdAndNameTarget,
-} from '../operation-log-targets'
 import {
   DepartmentConflictError,
   DepartmentDeleteConflictError,
@@ -133,7 +125,12 @@ export function createDepartmentRoutes(database: Db) {
       '/',
       requireAccess('system:department:create'),
       departmentCreateBodyValidator,
-      operationLog('system:department:create', operationLogCodeAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:department:create', () => {
+          const { code, name } = c.req.valid('json')
+
+          return { targetKey: code, targetLabel: name }
+        }),
       async (c) => {
         const body: DepartmentCreateInput = c.req.valid('json')
 
@@ -145,7 +142,11 @@ export function createDepartmentRoutes(database: Db) {
       requireAccess('system:department:update'),
       departmentIdValidator,
       departmentUpdateBodyValidator,
-      operationLog('system:department:update', operationLogIdAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:department:update', () => ({
+          targetKey: c.req.valid('param').id,
+          targetLabel: c.req.valid('json').name,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DepartmentUpdateInput = c.req.valid('json')
@@ -157,7 +158,10 @@ export function createDepartmentRoutes(database: Db) {
       '/:id',
       requireAccess('system:department:delete'),
       departmentIdValidator,
-      operationLog('system:department:delete', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:department:delete', () => ({
+          targetKey: c.req.valid('param').id,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
 

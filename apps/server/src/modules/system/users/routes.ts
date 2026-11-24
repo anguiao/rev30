@@ -14,12 +14,7 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  operationLogIdTarget,
-  type OperationLogEnv,
-  type OperationLogInput,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   BuiltInUserMutationError,
@@ -118,7 +113,7 @@ export function createUserRoutes(database: Db) {
       '/',
       requireAccess('system:user:list'),
       userListQueryValidator,
-      operationLog('system:user:list'),
+      (c, next) => operationLog(c, next, 'system:user:list'),
       async (c) => {
         const query: UserListQuery = c.req.valid('query')
 
@@ -134,14 +129,12 @@ export function createUserRoutes(database: Db) {
       '/',
       requireAccess('system:user:create'),
       userCreateBodyValidator,
-      operationLog<OperationLogInput<typeof userCreateBodyValidator>>(
-        'system:user:create',
-        (request) => {
-          const { username, nickname } = request.valid('json')
+      (c, next) =>
+        operationLog(c, next, 'system:user:create', () => {
+          const { username, nickname } = c.req.valid('json')
 
           return { targetKey: username, targetLabel: nickname }
-        },
-      ),
+        }),
       async (c) => {
         const body: UserCreateInput = c.req.valid('json')
 
@@ -158,7 +151,10 @@ export function createUserRoutes(database: Db) {
       '/:id/password/reset',
       requireAccess('system:user:reset-password'),
       userIdValidator,
-      operationLog('system:user:reset-password', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:user:reset-password', () => ({
+          targetKey: c.req.valid('param').id,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
 
@@ -174,7 +170,8 @@ export function createUserRoutes(database: Db) {
       '/:id',
       requireAccess('system:user:list'),
       userIdValidator,
-      operationLog('system:user:view', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:user:view', () => ({ targetKey: c.req.valid('param').id })),
       async (c) => {
         const { id } = c.req.valid('param')
 
@@ -186,13 +183,11 @@ export function createUserRoutes(database: Db) {
       requireAccess('system:user:update'),
       userIdValidator,
       userUpdateBodyValidator,
-      operationLog<
-        OperationLogInput<typeof userIdValidator> &
-          OperationLogInput<typeof userUpdateBodyValidator>
-      >('system:user:update', (request) => ({
-        targetKey: request.valid('param').id,
-        targetLabel: request.valid('json').nickname,
-      })),
+      (c, next) =>
+        operationLog(c, next, 'system:user:update', () => ({
+          targetKey: c.req.valid('param').id,
+          targetLabel: c.req.valid('json').nickname,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: UserUpdateInput = c.req.valid('json')
@@ -209,7 +204,8 @@ export function createUserRoutes(database: Db) {
       '/:id',
       requireAccess('system:user:delete'),
       userIdValidator,
-      operationLog('system:user:delete', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:user:delete', () => ({ targetKey: c.req.valid('param').id })),
       async (c) => {
         const { id } = c.req.valid('param')
 

@@ -14,16 +14,8 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  operationLogIdTarget,
-  type OperationLogEnv,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
-import {
-  operationLogCodeAndNameTarget,
-  operationLogIdAndNameTarget,
-} from '../operation-log-targets'
 import {
   DictionaryCodeConflictError,
   DictionaryInvalidItemError,
@@ -116,7 +108,12 @@ export function createDictionaryRoutes(database: Db) {
       '/',
       requireAccess('system:dictionary:create'),
       dictionaryCreateBodyValidator,
-      operationLog('system:dictionary:create', operationLogCodeAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:dictionary:create', () => {
+          const { code, name } = c.req.valid('json')
+
+          return { targetKey: code, targetLabel: name }
+        }),
       async (c) => {
         const body: DictionaryCreateInput = c.req.valid('json')
 
@@ -128,7 +125,11 @@ export function createDictionaryRoutes(database: Db) {
       requireAccess('system:dictionary:update'),
       dictionaryIdValidator,
       dictionaryUpdateBodyValidator,
-      operationLog('system:dictionary:update', operationLogIdAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:dictionary:update', () => ({
+          targetKey: c.req.valid('param').id,
+          targetLabel: c.req.valid('json').name,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DictionaryUpdateInput = c.req.valid('json')
@@ -140,7 +141,10 @@ export function createDictionaryRoutes(database: Db) {
       '/:id',
       requireAccess('system:dictionary:delete'),
       dictionaryIdValidator,
-      operationLog('system:dictionary:delete', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:dictionary:delete', () => ({
+          targetKey: c.req.valid('param').id,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
 

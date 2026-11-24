@@ -6,7 +6,7 @@ import {
   operationLogModuleSchema,
   type OperationLogAction,
 } from '@rev30/contracts'
-import type { Context, HonoRequest, Input, MiddlewareHandler } from 'hono'
+import type { Context, MiddlewareHandler, Next } from 'hono'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { OperationLogEvent, OperationLogEventReceiver } from '../runtime/operation-log'
@@ -133,43 +133,18 @@ function registerOperation(
   }
 }
 
-export type OperationLogInput<Validator> =
-  Validator extends MiddlewareHandler<
-    infer _Env,
-    infer _Path,
-    infer ValidatedInput,
-    infer _Response
-  >
-    ? ValidatedInput
-    : never
-
-type OperationLogResolver<I extends Input, Value> = (
-  request: Pick<HonoRequest<string, I['out']>, 'valid'>,
-) => Value
-type OperationLogRouteMiddleware<I extends Input = {}> = MiddlewareHandler<
-  OperationLogContextEnv,
-  string,
-  I,
-  never
->
-
-export const operationLogIdTarget: OperationLogResolver<
-  { out: { param: { id: string } } },
-  OperationLogTarget
-> = (request) => ({ targetKey: request.valid('param').id })
-
 /** Registers an operation using the input made available by the preceding validators. */
-export function operationLog<I extends Input = {}>(
-  action: OperationLogAction | OperationLogResolver<I, OperationLogAction>,
-  resolveTarget?: OperationLogResolver<I, OperationLogTarget>,
-): OperationLogRouteMiddleware<I> {
-  return async (c, next) => {
-    registerOperation(c, () => ({
-      action: typeof action === 'function' ? action(c.req) : action,
-      target: resolveTarget ? resolveTarget(c.req) : {},
-    }))
-    await next()
-  }
+export function operationLog(
+  c: Context<OperationLogContextEnv>,
+  next: Next,
+  action: OperationLogAction | (() => OperationLogAction),
+  resolveTarget?: () => OperationLogTarget,
+) {
+  registerOperation(c, () => ({
+    action: typeof action === 'function' ? action() : action,
+    target: resolveTarget ? resolveTarget() : {},
+  }))
+  return next()
 }
 
 function createOperationLogEvent(

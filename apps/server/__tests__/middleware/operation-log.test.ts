@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type MiddlewareHandler } from 'hono'
+import { Hono } from 'hono'
 import type { Logger } from 'pino'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
@@ -10,7 +10,6 @@ import {
   createOperationLogMiddleware,
   operationLog,
   type OperationLogEnv,
-  type OperationLogInput,
 } from '../../src/middleware/operation-log'
 import type { RequestContextEnv } from '../../src/middleware/request-context'
 import type { OperationLogEvent, OperationLogEventReceiver } from '../../src/runtime/operation-log'
@@ -18,7 +17,6 @@ import { createLogger } from '../../src/runtime/logger'
 
 type TestEnv = AuthEnv & RequestContextEnv & OperationLogEnv
 const targetParamValidator = zValidator('param', z.object({ id: z.string().trim().min(1) }))
-type TargetParamInput = OperationLogInput<typeof targetParamValidator>
 
 function createLoggerSpy() {
   const logger = createLogger({ level: 'silent' })
@@ -102,7 +100,7 @@ describe('operation log registration and middleware', () => {
     }
     const app = createTestApp({ events, logger }).post(
       '/success',
-      operationLog('system:user:update', () => target),
+      (c, next) => operationLog(c, next, 'system:user:update', () => target),
       (c) => {
         monotonicTime = 22.9
         target.targetLabel = 'Changed by handler'
@@ -147,10 +145,11 @@ describe('operation log registration and middleware', () => {
     const multilineValue = `${'a\n'.repeat(300)}a`
     const app = createTestApp({ events, logger }).post(
       '/unicode',
-      operationLog('system:user:update', () => ({
-        targetKey: unicodeValue,
-        targetLabel: multilineValue,
-      })),
+      (c, next) =>
+        operationLog(c, next, 'system:user:update', () => ({
+          targetKey: unicodeValue,
+          targetLabel: multilineValue,
+        })),
       (c) => c.json({ ok: true }),
     )
 
@@ -170,10 +169,18 @@ describe('operation log registration and middleware', () => {
     const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
     const app = createTestApp({ events, logger })
-      .get('/detail', operationLog('system:user:view'), (c) => c.body(null, 204))
+      .get(
+        '/detail',
+        (c, next) => operationLog(c, next, 'system:user:view'),
+        (c) => c.body(null, 204),
+      )
       .get(
         '/list',
-        operationLog('system:user:list', () => ({ targetKey: 'group-1', targetLabel: ' ' })),
+        (c, next) =>
+          operationLog(c, next, 'system:user:list', () => ({
+            targetKey: 'group-1',
+            targetLabel: ' ',
+          })),
         (c) => c.body(null, 204),
       )
 
@@ -201,10 +208,13 @@ describe('operation log registration and middleware', () => {
       '/jobs/:id',
       targetParamValidator,
       enabledBodyValidator,
-      operationLog<TargetParamInput & OperationLogInput<typeof enabledBodyValidator>>(
-        (request) => selectAction(request.valid('json').enabled),
-        (request) => ({ targetKey: `job:${request.valid('param').id}` }),
-      ),
+      (c, next) =>
+        operationLog(
+          c,
+          next,
+          () => selectAction(c.req.valid('json').enabled),
+          () => ({ targetKey: `job:${c.req.valid('param').id}` }),
+        ),
       (c) => c.json({ id: c.req.valid('param').id, enabled: c.req.valid('json').enabled }),
     )
 
@@ -240,7 +250,7 @@ describe('operation log registration and middleware', () => {
     const app = createTestApp({ events, logger })
       .post(
         '/failure',
-        operationLog('system:user:delete', () => ({ targetKey: 'user-1' })),
+        (c, next) => operationLog(c, next, 'system:user:delete', () => ({ targetKey: 'user-1' })),
         (c) => {
           monotonicTime = 5
           return c.json({ password: 'domain-secret' }, 409)
@@ -248,7 +258,7 @@ describe('operation log registration and middleware', () => {
       )
       .post(
         '/unknown',
-        operationLog('system:user:delete', () => ({ targetKey: 'user-2' })),
+        (c, next) => operationLog(c, next, 'system:user:delete', () => ({ targetKey: 'user-2' })),
         () => {
           monotonicTime = 9
           throw new Error('database-password-secret')
@@ -280,33 +290,41 @@ describe('operation log registration and middleware', () => {
     const app = createTestApp({ events, logger })
       .post(
         '/invalid-action',
-        // @ts-expect-error Unknown actions must also be rejected at runtime.
-        operationLog('invalid:action', () => ({ targetKey: 'secret' })),
+        (c, next) =>
+          // @ts-expect-error Unknown actions must also be rejected at runtime.
+          operationLog(c, next, 'invalid:action', () => ({ targetKey: 'secret' })),
         (c) => c.text(business(c.req.path)),
       )
       .post(
         '/extra',
-        operationLog('system:user:update', () => ({ targetKey: 'secret', extra: 'secret-extra' })),
+        (c, next) =>
+          operationLog(c, next, 'system:user:update', () => ({
+            targetKey: 'secret',
+            extra: 'secret-extra',
+          })),
         (c) => c.text(business(c.req.path)),
       )
       .post(
         '/action-error',
-        operationLog(() => {
-          throw new Error('action-secret')
-        }),
+        (c, next) =>
+          operationLog(c, next, () => {
+            throw new Error('action-secret')
+          }),
         (c) => c.text(business(c.req.path)),
       )
       .post(
         '/target-error',
-        operationLog('system:user:update', () => {
-          throw new Error('target-secret')
-        }),
+        (c, next) =>
+          operationLog(c, next, 'system:user:update', () => {
+            throw new Error('target-secret')
+          }),
         (c) => c.text(business(c.req.path)),
       )
       .post(
         '/duplicate',
-        operationLog('system:user:update', () => ({ targetKey: 'first-secret' })),
-        operationLog('system:user:delete', secondTarget),
+        (c, next) =>
+          operationLog(c, next, 'system:user:update', () => ({ targetKey: 'first-secret' })),
+        (c, next) => operationLog(c, next, 'system:user:delete', secondTarget),
         (c) => c.text(business(c.req.path)),
       )
 
@@ -345,7 +363,7 @@ describe('operation log registration and middleware', () => {
       .get('/unregistered', (c) => c.text('unregistered-ok'))
       .post(
         '/registered',
-        operationLog('system:user:delete', () => ({ targetKey: 'user-1' })),
+        (c, next) => operationLog(c, next, 'system:user:delete', () => ({ targetKey: 'user-1' })),
         (c) => c.text('registered-ok'),
       )
 
@@ -371,7 +389,7 @@ describe('operation log registration and middleware', () => {
     vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
     const app = createTestApp({ events, logger }).post(
       '/invalid-duration',
-      operationLog('system:user:delete', () => ({ targetKey: 'user-1' })),
+      (c, next) => operationLog(c, next, 'system:user:delete', () => ({ targetKey: 'user-1' })),
       (c) => {
         monotonicTime = 9
         return c.text('business-ok')
@@ -409,22 +427,21 @@ describe('operation log registration and middleware', () => {
     const receiver = vi.fn<OperationLogEventReceiver>(() => {
       throw new Error('receiver-secret')
     })
-    const continueRequest: MiddlewareHandler<TestEnv> = async (_c, next) => next()
-    const registerAgain =
-      kind === 'duplicate_registration'
-        ? operationLog('system:user:delete', () => ({ targetKey: 'duplicate-secret' }))
-        : continueRequest
     const app = createTestApp({ events: [], logger, receiver }).post(
       '/users/:id',
       targetParamValidator,
-      operationLog<TargetParamInput>('system:user:delete', (request) => {
-        if (kind === 'invalid_registration') {
-          throw new Error('target-resolver-secret')
-        }
+      (c, next) =>
+        operationLog(c, next, 'system:user:delete', () => {
+          if (kind === 'invalid_registration') {
+            throw new Error('target-resolver-secret')
+          }
 
-        return { targetKey: request.valid('param').id }
-      }),
-      registerAgain,
+          return { targetKey: c.req.valid('param').id }
+        }),
+      (c, next) =>
+        kind === 'duplicate_registration'
+          ? operationLog(c, next, 'system:user:delete', () => ({ targetKey: 'duplicate-secret' }))
+          : next(),
       (c) => c.text('business-ok', 202),
     )
     const path = '/users/target-1'

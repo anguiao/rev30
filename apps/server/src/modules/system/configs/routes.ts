@@ -10,11 +10,7 @@ import { z } from 'zod'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  type OperationLogEnv,
-  type OperationLogInput,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import { ConfigInvalidValueError, ConfigNotFoundError } from './errors'
 import { createConfigService } from './service'
@@ -74,12 +70,10 @@ export function createConfigRoutes(database: Db) {
       requireAccess('system:config:update'),
       configKeyValidator,
       configUpdateBodyValidator,
-      operationLog<OperationLogInput<typeof configKeyValidator>>(
-        'system:config:update',
-        (request) => ({
-          targetKey: request.valid('param').key,
-        }),
-      ),
+      (c, next) =>
+        operationLog(c, next, 'system:config:update', () => ({
+          targetKey: c.req.valid('param').key,
+        })),
       async (c) => {
         const { key } = c.req.valid('param')
         const body = c.req.valid('json')

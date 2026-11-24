@@ -29,13 +29,13 @@ Rev30 已经能记录后台写操作和自定义图标集导出。业务 handler
 
 ## 路由登记与请求结果
 
-在 `apps/server/src/middleware/operation-log.ts` 提供路由中间件工厂 `operationLog`，在原路由的认证、适用的权限检查和全部 HTTP 输入校验通过后执行。业务 handler 和 service 只处理业务。路由继续使用现有校验器及其 Hono 输入类型，前端继续从 `AppType` 推导请求类型。[登记与收口中间件](../../apps/server/src/middleware/operation-log.ts) · [根应用](../../apps/server/src/app.ts)
+在原路由的认证、适用的权限检查和全部 HTTP 输入校验通过后，由路由中间件调用 `operationLog` 登记。业务 handler 和 service 只处理业务。路由继续使用现有校验器及其 Hono 输入类型，前端继续从 `AppType` 推导请求类型。[登记与收口中间件](../../apps/server/src/middleware/operation-log.ts) · [根应用](../../apps/server/src/app.ts)
 
 | 声明场景 | 中间件输入 |
 | --- | --- |
-| 集合查询 | 直接声明固定动作，例如 `operationLog('system:user:list')`。 |
+| 集合查询 | 直接声明固定动作，例如 `system:user:list`。 |
 | 详情和已有的固定动作 | 声明固定动作与同步目标提取函数。详情取已校验的路径 ID，创建用户取已校验的用户名和昵称。 |
-| 动作取决于输入 | 同一工厂接受同步动作选择函数。定时任务启停按已校验的 `enabled` 选择 `ops:scheduled-job:enable` 或 `ops:scheduled-job:disable`，目标取路径中的 `taskKey`。 |
+| 动作取决于输入 | 路由提供同步动作选择函数。定时任务启停按已校验的 `enabled` 选择 `ops:scheduled-job:enable` 或 `ops:scheduled-job:disable`，目标取路径中的 `taskKey`。 |
 
 动作与目标在调用下游前确定。提取函数从该路由已校验的输入中逐字段选取目标，登记逻辑补齐操作者、管理员状态、会话及请求上下文快照。密码、配置值和文件内容等业务输入不会随请求对象带入事件。把声明放在路由旁，可以复用已校验输入，也能分别处理共用同一权限码的列表、详情和选项接口。集中维护方法与路径对照表则需要在路由变化时同步两处定义。
 

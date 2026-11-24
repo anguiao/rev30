@@ -11,17 +11,13 @@ import {
   customIconUploadMetadataSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context, type HonoRequest } from 'hono'
+import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { Db } from '../../../../db'
 import { requireAccess } from '../../../../middleware/access'
 import type { AuthEnv } from '../../../../middleware/auth'
 import { createBodyLimit } from '../../../../middleware/body-limit'
-import {
-  operationLog,
-  type OperationLogEnv,
-  type OperationLogInput,
-} from '../../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../../middleware/request-context'
 import {
   CustomIconConflictError,
@@ -79,8 +75,6 @@ const iconSetParamValidator = zValidator('param', iconSetPrefixParamSchema, (res
   }
 })
 
-type IconSetParamInput = OperationLogInput<typeof iconSetParamValidator>
-
 const customIconParamValidator = zValidator('param', customIconParamSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '图标参数无效' }, 400)
@@ -126,12 +120,6 @@ const iconUploadFormValidator = zValidator('form', iconUploadFormSchema, (result
   }
 })
 
-function iconSetPrefixTarget(
-  request: Pick<HonoRequest<string, IconSetParamInput['out']>, 'valid'>,
-) {
-  return { targetKey: request.valid('param').prefix }
-}
-
 function customIconErrorResponse(error: unknown, c: Context) {
   if (error instanceof CustomIconSetConflictError || error instanceof CustomIconConflictError) {
     return c.json({ message: error.message }, 409)
@@ -162,14 +150,12 @@ export function createCustomIconSetRoutes(database: Db) {
       '/',
       requireAccess('content:icon-set:create'),
       iconSetCreateBodyValidator,
-      operationLog<OperationLogInput<typeof iconSetCreateBodyValidator>>(
-        'content:icon-set:create',
-        (request) => {
-          const { prefix, name } = request.valid('json')
+      (c, next) =>
+        operationLog(c, next, 'content:icon-set:create', () => {
+          const { prefix, name } = c.req.valid('json')
 
           return { targetKey: prefix, targetLabel: name }
-        },
-      ),
+        }),
       async (c) => {
         return c.json(await service.create(c.req.valid('json')), 201)
       },
@@ -188,7 +174,10 @@ export function createCustomIconSetRoutes(database: Db) {
       iconSetParamValidator,
       customIconUploadBodyLimit,
       iconUploadFormValidator,
-      operationLog<IconSetParamInput>('content:icon:upload', iconSetPrefixTarget),
+      (c, next) =>
+        operationLog(c, next, 'content:icon:upload', () => ({
+          targetKey: c.req.valid('param').prefix,
+        })),
       async (c) => {
         const { prefix } = c.req.valid('param')
         const form = c.req.valid('form')
@@ -217,14 +206,12 @@ export function createCustomIconSetRoutes(database: Db) {
       requireAccess('content:icon-set:update'),
       customIconParamValidator,
       customIconUpdateBodyValidator,
-      operationLog<
-        OperationLogInput<typeof customIconParamValidator> &
-          OperationLogInput<typeof customIconUpdateBodyValidator>
-      >('content:icon:update', (request) => {
-        const { prefix, name } = request.valid('param')
+      (c, next) =>
+        operationLog(c, next, 'content:icon:update', () => {
+          const { prefix, name } = c.req.valid('param')
 
-        return { targetKey: `${prefix}:${name}`, targetLabel: request.valid('json').name }
-      }),
+          return { targetKey: `${prefix}:${name}`, targetLabel: c.req.valid('json').name }
+        }),
       async (c) => {
         const { prefix, name } = c.req.valid('param')
         const body = c.req.valid('json')
@@ -236,14 +223,12 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/icons/:name',
       requireAccess('content:icon-set:delete'),
       customIconParamValidator,
-      operationLog<OperationLogInput<typeof customIconParamValidator>>(
-        'content:icon:delete',
-        (request) => {
-          const { prefix, name } = request.valid('param')
+      (c, next) =>
+        operationLog(c, next, 'content:icon:delete', () => {
+          const { prefix, name } = c.req.valid('param')
 
           return { targetKey: `${prefix}:${name}` }
-        },
-      ),
+        }),
       async (c) => {
         const { prefix, name } = c.req.valid('param')
 
@@ -256,7 +241,10 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/export',
       requireAccess('content:icon-set:export'),
       iconSetParamValidator,
-      operationLog<IconSetParamInput>('content:icon-set:export', iconSetPrefixTarget),
+      (c, next) =>
+        operationLog(c, next, 'content:icon-set:export', () => ({
+          targetKey: c.req.valid('param').prefix,
+        })),
       async (c) => {
         const { prefix } = c.req.valid('param')
         const exported = await service.exportIconSet(prefix)
@@ -277,13 +265,11 @@ export function createCustomIconSetRoutes(database: Db) {
       requireAccess('content:icon-set:update'),
       iconSetParamValidator,
       iconSetUpdateBodyValidator,
-      operationLog<IconSetParamInput & OperationLogInput<typeof iconSetUpdateBodyValidator>>(
-        'content:icon-set:update',
-        (request) => ({
-          targetKey: request.valid('param').prefix,
-          targetLabel: request.valid('json').name,
-        }),
-      ),
+      (c, next) =>
+        operationLog(c, next, 'content:icon-set:update', () => ({
+          targetKey: c.req.valid('param').prefix,
+          targetLabel: c.req.valid('json').name,
+        })),
       async (c) => {
         const { prefix } = c.req.valid('param')
         const body = c.req.valid('json')
@@ -295,7 +281,10 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix',
       requireAccess('content:icon-set:delete'),
       iconSetParamValidator,
-      operationLog<IconSetParamInput>('content:icon-set:delete', iconSetPrefixTarget),
+      (c, next) =>
+        operationLog(c, next, 'content:icon-set:delete', () => ({
+          targetKey: c.req.valid('param').prefix,
+        })),
       async (c) => {
         const { prefix } = c.req.valid('param')
 

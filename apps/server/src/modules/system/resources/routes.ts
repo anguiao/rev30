@@ -14,16 +14,8 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import {
-  operationLog,
-  operationLogIdTarget,
-  type OperationLogEnv,
-} from '../../../middleware/operation-log'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
-import {
-  operationLogCodeAndNameTarget,
-  operationLogIdAndNameTarget,
-} from '../operation-log-targets'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,
@@ -119,7 +111,7 @@ export function createResourceRoutes(database: Db) {
       '/',
       requireAccess('system:resource:list'),
       resourceListQueryValidator,
-      operationLog('system:resource:list'),
+      (c, next) => operationLog(c, next, 'system:resource:list'),
       async (c) => {
         const query: ResourceListQuery = c.req.valid('query')
 
@@ -129,7 +121,7 @@ export function createResourceRoutes(database: Db) {
     .get(
       '/tree',
       requireAccess('system:resource:list'),
-      operationLog('system:resource:list'),
+      (c, next) => operationLog(c, next, 'system:resource:list'),
       async (c) => c.json(await service.tree()),
     )
     .get(
@@ -146,7 +138,10 @@ export function createResourceRoutes(database: Db) {
       '/:id',
       requireAccess('system:resource:list'),
       resourceIdValidator,
-      operationLog('system:resource:view', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:resource:view', () => ({
+          targetKey: c.req.valid('param').id,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
 
@@ -157,7 +152,12 @@ export function createResourceRoutes(database: Db) {
       '/',
       requireAccess('system:resource:create'),
       resourceCreateBodyValidator,
-      operationLog('system:resource:create', operationLogCodeAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:resource:create', () => {
+          const { code, name } = c.req.valid('json')
+
+          return { targetKey: code, targetLabel: name }
+        }),
       async (c) => {
         const body: ResourceCreateInput = c.req.valid('json')
 
@@ -175,7 +175,11 @@ export function createResourceRoutes(database: Db) {
       requireAccess('system:resource:update'),
       resourceIdValidator,
       resourceUpdateBodyValidator,
-      operationLog('system:resource:update', operationLogIdAndNameTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:resource:update', () => ({
+          targetKey: c.req.valid('param').id,
+          targetLabel: c.req.valid('json').name,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: ResourceUpdateInput = c.req.valid('json')
@@ -192,7 +196,10 @@ export function createResourceRoutes(database: Db) {
       '/:id',
       requireAccess('system:resource:delete'),
       resourceIdValidator,
-      operationLog('system:resource:delete', operationLogIdTarget),
+      (c, next) =>
+        operationLog(c, next, 'system:resource:delete', () => ({
+          targetKey: c.req.valid('param').id,
+        })),
       async (c) => {
         const { id } = c.req.valid('param')
 

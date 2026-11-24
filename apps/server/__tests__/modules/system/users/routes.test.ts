@@ -1,18 +1,21 @@
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { hc } from 'hono/client'
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { USER_STATUS_ENABLED, type User } from '@rev30/contracts'
+import type { AppType } from '../../../../src/app'
 import type { createUserService } from '../../../../src/modules/system/users/service'
 import type { requireAccess } from '../../../../src/middleware/access'
-import type { recordOperation } from '../../../../src/middleware/operation-log'
-import type { AuthEnv } from '../../../../src/middleware/auth'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import {
   UserConflictError,
   UserMutationForbiddenError,
 } from '../../../../src/modules/system/users/errors'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 type UserService = ReturnType<typeof createUserService>
+type UserIdClient = ReturnType<typeof hc<AppType>>['api']['system']['users'][':id']
+type UserIdRequest = { param: { id: string } }
 
 const userId = '11111111-1111-4111-8111-111111111111'
 const departmentId = '22222222-2222-4222-8222-222222222222'
@@ -51,7 +54,6 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createUserService: vi.fn(() => service),
-    recordOperation: vi.fn<typeof recordOperation>(),
     requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
@@ -65,19 +67,11 @@ vi.mock('../../../../src/modules/system/users/service', () => ({
   createUserService: mocks.createUserService,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: mocks.recordOperation,
-}))
-
-function createTestApp() {
-  return new Hono<AuthEnv>()
-    .use('*', async (c, next) => {
-      c.set('currentUser', user)
-      c.set('accessCodes', userAccess.accessCodes)
-      c.set('isAdmin', userAccess.isAdmin)
-      await next()
-    })
-    .route('/api/system/users', createUserRoutes({} as never))
+function createTestApp(events: OperationLogEvent[] = []) {
+  return createOperationLogRouteTestApp(events, { ...userAccess, currentUser: user }).route(
+    '/api/system/users',
+    createUserRoutes({} as never),
+  )
 }
 
 describe('user routes', () => {
@@ -102,6 +96,14 @@ describe('user routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
+  it('requires the user id for detail, deletion and password reset RPC calls', () => {
+    expectTypeOf<Parameters<UserIdClient['$get']>[0]>().toEqualTypeOf<UserIdRequest>()
+    expectTypeOf<Parameters<UserIdClient['$delete']>[0]>().toEqualTypeOf<UserIdRequest>()
+    expectTypeOf<
+      Parameters<UserIdClient['password']['reset']['$post']>[0]
+    >().toEqualTypeOf<UserIdRequest>()
+  })
+
   it.each([
     ['', 'GET', 'system:user:list', 'list', null, 200],
     ['/options', 'GET', 'system:user:list', 'options', null, 200],
@@ -119,7 +121,8 @@ describe('user routes', () => {
         }
         await next()
       })
-      const app = createTestApp()
+      const events: OperationLogEvent[] = []
+      const app = createTestApp(events)
       const request = {
         method,
         ...(body === null
@@ -136,6 +139,7 @@ describe('user routes', () => {
       for (const serviceMock of Object.values(mocks.service)) {
         expect(serviceMock).not.toHaveBeenCalled()
       }
+      expect(events).toEqual([])
 
       const allowed = await app.request(`/api/system/users${path}`, {
         ...request,
@@ -187,7 +191,8 @@ describe('user routes', () => {
   })
 
   it('delegates create requests to the user service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
     const avatarId = '44444444-4444-4444-8444-444444444444'
 
     const createBody = {
@@ -217,80 +222,80 @@ describe('user routes', () => {
       },
       userAccess,
     )
-    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:create', {
-      targetKey: 'ada',
-      targetLabel: 'Ada Lovelace',
-    })
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.create.mock.invocationCallOrder[0]!,
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:create',
+        targetKey: 'ada',
+        targetLabel: 'Ada Lovelace',
+        httpStatus: 201,
+      }),
+    ])
+    expect(JSON.stringify(events)).not.toMatch(
+      /avatar|email|phone|department|role|temporary-password/,
     )
-    expect(
-      JSON.stringify(
-        mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
-      ),
-    ).not.toMatch(/avatar|email|phone|department|role|temporary-password/)
   })
 
-  it('delegates update requests by id', async () => {
-    const app = createTestApp()
+  it.each([
+    [{ nickname: 'Updated Ada', avatarId: null }, 'Updated Ada'],
+    [{ avatarId: null }, null],
+  ] as const)('delegates updates by id and audits the target for %j', async (body, targetLabel) => {
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const updateResponse = await app.request(`/api/system/users/${userId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ nickname: 'Updated Ada', avatarId: null }),
+      body: JSON.stringify(body),
       headers: { 'content-type': 'application/json' },
     })
     expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(
-      userId,
-      { nickname: 'Updated Ada', avatarId: null },
-      userAccess,
-    )
-    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:update', {
-      targetKey: userId,
-      targetLabel: 'Updated Ada',
-    })
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.update.mock.invocationCallOrder[0]!,
-    )
-    expect(
-      JSON.stringify(
-        mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
-      ),
-    ).not.toContain('avatarId')
+    expect(mocks.service.update).toHaveBeenCalledWith(userId, body, userAccess)
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:update',
+        targetKey: userId,
+        targetLabel,
+        httpStatus: 200,
+      }),
+    ])
+    expect(JSON.stringify(events)).not.toContain('avatarId')
   })
 
   it('delegates reset-password requests by id', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const resetResponse = await app.request(`/api/system/users/${userId}/password/reset`, {
       method: 'POST',
     })
     expect(resetResponse.status).toBe(200)
     expect(mocks.service.resetPassword).toHaveBeenCalledWith(userId, userAccess)
-    expect(mocks.recordOperation).toHaveBeenCalledWith(
-      expect.anything(),
-      'system:user:reset-password',
-      { targetKey: userId },
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.resetPassword.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:reset-password',
+        targetKey: userId,
+        targetLabel: null,
+        httpStatus: 200,
+      }),
+    ])
   })
 
   it('delegates delete requests by id', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const deleteResponse = await app.request(`/api/system/users/${userId}`, {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(userId, userAccess)
-    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:delete', {
-      targetKey: userId,
-    })
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.delete.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:delete',
+        targetKey: userId,
+        targetLabel: null,
+        httpStatus: 204,
+      }),
+    ])
   })
 
   it('returns query validation errors before calling the user service', async () => {
@@ -345,7 +350,8 @@ describe('user routes', () => {
   })
 
   it('returns create body validation errors before calling the user service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const createResponse = await app.request('/api/system/users', {
       method: 'POST',
@@ -355,11 +361,12 @@ describe('user routes', () => {
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
-    expect(mocks.recordOperation).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('returns update body validation errors before calling the user service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const updateResponse = await app.request(`/api/system/users/${userId}`, {
       method: 'PATCH',
@@ -369,6 +376,7 @@ describe('user routes', () => {
     expect(updateResponse.status).toBe(400)
     expect(await updateResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('maps user conflict errors to route responses', async () => {
@@ -391,7 +399,8 @@ describe('user routes', () => {
   })
 
   it('maps forbidden user mutations to route responses', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     mocks.service.update.mockRejectedValueOnce(new UserMutationForbiddenError('user-access'))
     const response = await app.request(`/api/system/users/${userId}`, {
@@ -402,12 +411,34 @@ describe('user routes', () => {
 
     expect(response.status).toBe(403)
     expect(await response.json()).toEqual({ message: '不能操作超出自身权限范围的用户' })
-    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:update', {
-      targetKey: userId,
-      targetLabel: 'Blocked Update',
-    })
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.update.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:update',
+        targetKey: userId,
+        targetLabel: 'Blocked Update',
+        result: 'failure',
+        httpStatus: 403,
+      }),
+    ])
+  })
+
+  it('uses the root error response for unexpected failures after registering user details', async () => {
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
+    mocks.service.get.mockRejectedValueOnce(new Error('unexpected-user-service-failure'))
+
+    const response = await app.request(`/api/system/users/${userId}`)
+
+    expect(response.status).toBe(500)
+    expect(await response.text()).toBe('Internal Server Error')
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:view',
+        targetKey: userId,
+        targetLabel: null,
+        result: 'failure',
+        httpStatus: 500,
+      }),
+    ])
   })
 })

@@ -2,11 +2,13 @@ import {
   OPERATION_LOG_RESULT_FAILURE,
   OPERATION_LOG_RESULT_SUCCESS,
   clientIpSourceSchema,
+  isOperationLogCollectionAction,
   operationLogActionSchema,
   operationLogModuleSchema,
   type OperationLogAction,
+  type OperationLogCollectionAction,
 } from '@rev30/contracts'
-import type { Context, MiddlewareHandler } from 'hono'
+import type { Context, HonoRequest, Input, MiddlewareHandler } from 'hono'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { OperationLogEvent, OperationLogEventReceiver } from '../runtime/operation-log'
@@ -25,16 +27,24 @@ function truncateSnapshot(value: string) {
 
 const normalizedSnapshotSchema = z.string().trim().transform(truncateSnapshot)
 const requiredSnapshotSchema = normalizedSnapshotSchema.pipe(z.string().min(1))
-const optionalSnapshotSchema = normalizedSnapshotSchema
-  .transform((value) => value || undefined)
-  .optional()
+const optionalTargetSchema = z.string().trim().optional()
 const registrationTargetSchema = z
   .object({
-    targetKey: optionalSnapshotSchema,
-    targetLabel: optionalSnapshotSchema,
+    targetKey: optionalTargetSchema,
+    targetLabel: optionalTargetSchema,
   })
   .strict()
-  .refine(({ targetKey, targetLabel }) => targetKey !== undefined || targetLabel !== undefined)
+const operationLogRegistrationSchema = z
+  .object({
+    action: operationLogActionSchema,
+    target: registrationTargetSchema,
+  })
+  .strict()
+  .refine(({ action, target: { targetKey, targetLabel } }) =>
+    isOperationLogCollectionAction(action)
+      ? targetKey === undefined && targetLabel === undefined
+      : Boolean(targetKey || targetLabel),
+  )
 
 const operationLogDraftSchema = z
   .object({
@@ -74,15 +84,13 @@ export type OperationLogEnv = {
 
 type OperationLogContextEnv = AuthEnv & RequestContextEnv & OperationLogEnv
 
-type OperationLogTarget = {
-  targetKey?: string
-  targetLabel?: string
-}
+type OperationLogRegistrationInput = z.input<typeof operationLogRegistrationSchema>
+type OperationLogEntityAction = Exclude<OperationLogAction, OperationLogCollectionAction>
+type OperationLogTarget = OperationLogRegistrationInput['target']
 
-export function recordOperation(
+function registerOperation(
   c: Context<OperationLogContextEnv>,
-  action: OperationLogAction,
-  target: OperationLogTarget,
+  resolveRegistration: () => OperationLogRegistrationInput,
 ) {
   const registration = c.get('operationLogRegistration')
 
@@ -94,12 +102,12 @@ export function recordOperation(
     return
   }
 
+  const { requestId, clientIp, clientIpSource, userAgent } = c.get('requestContext')
+
   try {
-    const parsedAction = operationLogActionSchema.parse(action)
-    const parsedTarget = registrationTargetSchema.parse(target)
-    const requestContext = c.get('requestContext')
+    const { action, target } = operationLogRegistrationSchema.parse(resolveRegistration())
     const currentUser = c.get('currentUser')
-    const [module, targetType] = parsedAction.split(':')
+    const [module, targetType] = action.split(':')
     const draft = operationLogDraftSchema.parse({
       actorUserId: currentUser?.id,
       actorUsername: currentUser?.username,
@@ -107,14 +115,14 @@ export function recordOperation(
       actorIsAdmin: c.get('isAdmin'),
       actorSessionId: c.get('currentSessionId'),
       module,
-      action: parsedAction,
+      action,
       targetType,
-      targetKey: parsedTarget.targetKey ?? null,
-      targetLabel: parsedTarget.targetLabel ?? null,
-      requestId: requestContext?.requestId,
-      clientIp: requestContext?.clientIp,
-      clientIpSource: requestContext?.clientIpSource,
-      userAgent: requestContext?.userAgent,
+      targetKey: target.targetKey || null,
+      targetLabel: target.targetLabel || null,
+      requestId,
+      clientIp,
+      clientIpSource,
+      userAgent,
       createdAt: new Date().toISOString(),
       startedAt: performance.now(),
     })
@@ -123,8 +131,60 @@ export function recordOperation(
   } catch {
     c.set('operationLogRegistration', {
       operationLogErrorKind: 'invalid_registration',
-      requestId: c.get('requestContext').requestId,
+      requestId,
     })
+  }
+}
+
+export function recordOperation(
+  c: Context<OperationLogContextEnv>,
+  action: OperationLogAction,
+  target: OperationLogTarget,
+) {
+  registerOperation(c, () => ({ action, target }))
+}
+
+export type OperationLogInput<Validator> =
+  Validator extends MiddlewareHandler<
+    infer _Env,
+    infer _Path,
+    infer ValidatedInput,
+    infer _Response
+  >
+    ? ValidatedInput
+    : never
+
+type OperationLogResolver<I extends Input, Value> = (
+  request: Pick<HonoRequest<string, I['out']>, 'valid'>,
+) => Value
+type OperationLogRouteMiddleware<I extends Input = {}> = MiddlewareHandler<
+  OperationLogContextEnv,
+  string,
+  I,
+  never
+>
+
+export const operationLogIdTarget: OperationLogResolver<
+  { out: { param: { id: string } } },
+  OperationLogTarget
+> = (request) => ({ targetKey: request.valid('param').id })
+
+/** Registers an operation using the input made available by the preceding validators. */
+export function operationLog(action: OperationLogCollectionAction): OperationLogRouteMiddleware
+export function operationLog<I extends Input>(
+  action: OperationLogEntityAction | OperationLogResolver<I, OperationLogEntityAction>,
+  resolveTarget: OperationLogResolver<I, OperationLogTarget>,
+): OperationLogRouteMiddleware<I>
+export function operationLog<I extends Input>(
+  action: OperationLogAction | OperationLogResolver<I, OperationLogAction>,
+  resolveTarget?: OperationLogResolver<I, OperationLogTarget>,
+): OperationLogRouteMiddleware<I> {
+  return async (c, next) => {
+    registerOperation(c, () => ({
+      action: typeof action === 'function' ? action(c.req) : action,
+      target: resolveTarget ? resolveTarget(c.req) : {},
+    }))
+    await next()
   }
 }
 

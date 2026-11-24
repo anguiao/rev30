@@ -1,9 +1,16 @@
-import type { UserCreateResponse, UserResetPasswordResponse } from '@rev30/contracts'
+import { randomUUID } from 'node:crypto'
+import type {
+  User,
+  UserCreateResponse,
+  UserListResponse,
+  UserResetPasswordResponse,
+} from '@rev30/contracts'
 import { describe, expect } from 'vitest'
 import { createApp } from '../../helpers/app'
 import type { OperationLogEvent } from '../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { jsonRequest, responseJson } from '../../helpers/http'
+import { createSystemUserFixture } from '../../helpers/system'
 import { dbTest } from '../../fixtures/database'
 
 const configKey = 'auth.loginFailureMaxAttempts'
@@ -15,6 +22,112 @@ function createOperationLogReceiver(events: OperationLogEvent[]) {
 }
 
 describe('system operation log integration', () => {
+  dbTest('audits a filtered user list and GET and HEAD details once each', async ({ db }) => {
+    const events: OperationLogEvent[] = []
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
+    const reader = await createSystemAccessFixture(db, {
+      accessCodes: ['system:user:list'],
+      usernamePrefix: 'user-log-reader',
+    })
+    const headers = reader.authHeaders
+    const keyword = 'sensitive-user-list-filter'
+    const contacts = { email: 'audited-user@example.com', phone: '13900000001' }
+    const user = await createSystemUserFixture(db, {
+      username: 'audited-user',
+      nickname: `Match for ${keyword}`,
+      ...contacts,
+    })
+    const path = `/api/system/users/${user.id}`
+
+    const list = await app.request(`/api/system/users?keyword=${keyword}&pageSize=5`, { headers })
+    expect(list.status).toBe(200)
+    expect((await responseJson<UserListResponse>(list)).list).toEqual([
+      expect.objectContaining({ id: user.id, ...contacts }),
+    ])
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:user:list',
+        actorUserId: reader.userId,
+        actorIsAdmin: false,
+        targetType: 'user',
+        targetKey: null,
+        targetLabel: null,
+        httpStatus: 200,
+        result: 'success',
+      }),
+    ])
+    expect(JSON.stringify(events)).not.toContain(user.id)
+
+    const detail = await app.request(path, { headers })
+    expect(detail.status).toBe(200)
+    expect(await responseJson<User>(detail)).toMatchObject({ id: user.id, ...contacts })
+
+    const head = await app.request(path, { method: 'HEAD', headers })
+    expect(head.status).toBe(200)
+    expect(await head.text()).toBe('')
+
+    const detailEvent = expect.objectContaining({
+      action: 'system:user:view',
+      actorUserId: reader.userId,
+      targetType: 'user',
+      targetKey: user.id,
+      targetLabel: null,
+      httpStatus: 200,
+      result: 'success',
+    })
+    expect(events.slice(1)).toEqual([detailEvent, detailEvent])
+    expect(events.map((event) => event.requestId)).toEqual(
+      [list, detail, head].map((response) => response.headers.get('x-request-id')),
+    )
+    const serializedEvents = JSON.stringify(events)
+    expect(serializedEvents).not.toContain(keyword)
+    expect(serializedEvents).not.toContain(contacts.email)
+    expect(serializedEvents).not.toContain(contacts.phone)
+  })
+
+  dbTest(
+    'audits missing users after validation and leaves options unregistered',
+    async ({ db }) => {
+      const events: OperationLogEvent[] = []
+      const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
+      const reader = await createSystemAccessFixture(db, { accessCodes: ['system:user:list'] })
+      const denied = await createSystemAccessFixture(db)
+      const missingId = randomUUID()
+      const path = `/api/system/users/${missingId}`
+
+      expect((await app.request(path)).status).toBe(401)
+      expect((await app.request(path, { headers: denied.authHeaders })).status).toBe(403)
+      expect(
+        (await app.request('/api/system/users/not-a-uuid', { headers: reader.authHeaders })).status,
+      ).toBe(400)
+      expect(
+        (await app.request('/api/system/users?page=0', { headers: reader.authHeaders })).status,
+      ).toBe(400)
+      expect(
+        (
+          await app.request(`/api/system/users/options?includeIds=${reader.userId}`, {
+            headers: reader.authHeaders,
+          })
+        ).status,
+      ).toBe(200)
+      expect(events).toEqual([])
+
+      const missing = await app.request(path, { headers: reader.authHeaders })
+      expect(missing.status).toBe(404)
+      expect(await missing.json()).toEqual({ message: '用户不存在' })
+      expect(events).toEqual([
+        expect.objectContaining({
+          action: 'system:user:view',
+          actorUserId: reader.userId,
+          targetKey: missingId,
+          targetLabel: null,
+          httpStatus: 404,
+          result: 'failure',
+        }),
+      ])
+    },
+  )
+
   dbTest(
     'records service failures after access and validation without recording config values',
     async ({ db }) => {

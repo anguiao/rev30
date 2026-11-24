@@ -1,20 +1,25 @@
-import type { OperationLogAction } from '@rev30/contracts'
-import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { operationLogCollectionActions } from '@rev30/contracts'
+import { Hono, type MiddlewareHandler } from 'hono'
 import type { Logger } from 'pino'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import { rootErrorHandler } from '../../src/app'
 import type { AuthEnv } from '../../src/middleware/auth'
 import { createRequestLogger } from '../../src/middleware/logger'
 import {
   createOperationLogMiddleware,
-  recordOperation,
+  operationLog,
   type OperationLogEnv,
+  type OperationLogInput,
 } from '../../src/middleware/operation-log'
 import type { RequestContextEnv } from '../../src/middleware/request-context'
 import type { OperationLogEvent, OperationLogEventReceiver } from '../../src/runtime/operation-log'
 import { createLogger } from '../../src/runtime/logger'
 
 type TestEnv = AuthEnv & RequestContextEnv & OperationLogEnv
+const targetParamValidator = zValidator('param', z.object({ id: z.string().trim().min(1) }))
+type TargetParamInput = OperationLogInput<typeof targetParamValidator>
 
 function createLoggerSpy() {
   const logger = createLogger({ level: 'silent' })
@@ -92,15 +97,20 @@ describe('operation log registration and middleware', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-19T00:00:00.000Z'))
     vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
-    const app = createTestApp({ events, logger }).post('/success', (c) => {
-      recordOperation(c, 'system:user:update', {
-        targetKey: `  ${'k'.repeat(600)}  `,
-        targetLabel: '  Ada  ',
-      })
-      monotonicTime = 22.9
+    const target = {
+      targetKey: `  ${'k'.repeat(600)}  `,
+      targetLabel: '  Ada  ',
+    }
+    const app = createTestApp({ events, logger }).post(
+      '/success',
+      operationLog('system:user:update', () => target),
+      (c) => {
+        monotonicTime = 22.9
+        target.targetLabel = 'Changed by handler'
 
-      return c.json({ secret: 'response-secret' })
-    })
+        return c.json({ secret: 'response-secret' })
+      },
+    )
 
     const response = await app.request('/success', { method: 'POST' })
 
@@ -136,14 +146,14 @@ describe('operation log registration and middleware', () => {
     const logger = createLoggerSpy()
     const unicodeValue = '😀'.repeat(520)
     const multilineValue = `${'a\n'.repeat(300)}a`
-    const app = createTestApp({ events, logger }).post('/unicode', (c) => {
-      recordOperation(c, 'system:user:update', {
+    const app = createTestApp({ events, logger }).post(
+      '/unicode',
+      operationLog('system:user:update', () => ({
         targetKey: unicodeValue,
         targetLabel: multilineValue,
-      })
-
-      return c.json({ ok: true })
-    })
+      })),
+      (c) => c.json({ ok: true }),
+    )
 
     const response = await app.request('/unicode', { method: 'POST' })
 
@@ -157,28 +167,97 @@ describe('operation log registration and middleware', () => {
     expect(Array.from(events[0]!.targetLabel ?? '')).toHaveLength(512)
   })
 
+  it.each(operationLogCollectionActions)('registers %s with empty targets', async (action) => {
+    const events: OperationLogEvent[] = []
+    const logger = createLoggerSpy()
+    const app = createTestApp({ events, logger }).get('/', operationLog(action), (c) =>
+      c.json({ list: [] }),
+    )
+
+    const response = await app.request('/')
+
+    expect(response.status).toBe(200)
+    expect(events).toEqual([
+      expect.objectContaining({ action, targetKey: null, targetLabel: null }),
+    ])
+    expect(logger.warn).not.toHaveBeenCalled()
+  })
+
+  it('selects actions and targets from validated path and body values', async () => {
+    const events: OperationLogEvent[] = []
+    const logger = createLoggerSpy()
+    const enabledBodyValidator = zValidator(
+      'json',
+      z.object({ enabled: z.enum(['on', 'off']).transform((status) => status === 'on') }),
+    )
+    const selectAction = vi.fn((enabled: boolean) =>
+      enabled ? 'ops:scheduled-job:enable' : 'ops:scheduled-job:disable',
+    )
+    const app = createTestApp({ events, logger }).patch(
+      '/jobs/:id',
+      targetParamValidator,
+      enabledBodyValidator,
+      operationLog<TargetParamInput & OperationLogInput<typeof enabledBodyValidator>>(
+        (request) => selectAction(request.valid('json').enabled),
+        (request) => ({ targetKey: `job:${request.valid('param').id}` }),
+      ),
+      (c) => c.json({ id: c.req.valid('param').id, enabled: c.req.valid('json').enabled }),
+    )
+
+    for (const [value, status, expected] of [
+      ['on', 200, { id: 'cleanup', enabled: true }],
+      ['off', 200, { id: 'cleanup', enabled: false }],
+      ['invalid', 400, undefined],
+    ] as const) {
+      const response = await app.request('/jobs/%20cleanup%20', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: value }),
+      })
+
+      expect(response.status).toBe(status)
+      if (expected) {
+        expect(await response.json()).toEqual(expected)
+      }
+    }
+
+    expect(selectAction.mock.calls).toEqual([[true], [false]])
+    expect(events).toEqual([
+      expect.objectContaining({ action: 'ops:scheduled-job:enable', targetKey: 'job:cleanup' }),
+      expect.objectContaining({ action: 'ops:scheduled-job:disable', targetKey: 'job:cleanup' }),
+    ])
+  })
+
   it('uses the final 4xx and 500 responses without exposing response bodies', async () => {
     const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
     let monotonicTime = 0
     vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
     const app = createTestApp({ events, logger })
-      .post('/failure', (c) => {
-        recordOperation(c, 'system:user:delete', { targetKey: 'user-1' })
-        monotonicTime = 5
-        return c.json({ password: 'domain-secret' }, 409)
-      })
-      .post('/unknown', (c) => {
-        recordOperation(c, 'system:user:delete', { targetKey: 'user-2' })
-        monotonicTime = 9
-        throw new Error('database-password-secret')
-      })
+      .post(
+        '/failure',
+        operationLog('system:user:delete', () => ({ targetKey: 'user-1' })),
+        (c) => {
+          monotonicTime = 5
+          return c.json({ password: 'domain-secret' }, 409)
+        },
+      )
+      .post(
+        '/unknown',
+        operationLog('system:user:delete', () => ({ targetKey: 'user-2' })),
+        () => {
+          monotonicTime = 9
+          throw new Error('database-password-secret')
+        },
+      )
 
     const failureResponse = await app.request('/failure', { method: 'POST' })
     const unknownResponse = await app.request('/unknown', { method: 'POST' })
 
     expect(failureResponse.status).toBe(409)
     expect(unknownResponse.status).toBe(500)
+    expect(await failureResponse.json()).toEqual({ password: 'domain-secret' })
+    expect(await unknownResponse.text()).toBe('Internal Server Error')
     expect(
       events.map(({ result, httpStatus, durationMs }) => ({ result, httpStatus, durationMs })),
     ).toEqual([
@@ -189,49 +268,90 @@ describe('operation log registration and middleware', () => {
     expect(JSON.stringify(events)).not.toContain('database-password-secret')
   })
 
-  it('discards missing targets, invalid registrations and duplicate registrations without changing responses', async () => {
+  it('discards invalid and duplicate registrations while executing business handlers once', async () => {
     const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
+    const business = vi.fn((path: string) => path)
+    const secondTarget = vi.fn(() => ({ targetKey: 'second-secret' }))
     const app = createTestApp({ events, logger })
-      .post('/empty', (c) => {
-        recordOperation(c, 'system:user:update', { targetKey: ' ', targetLabel: '' })
-        return c.text('empty-ok')
-      })
-      .post('/invalid', (c) => {
-        recordOperation(c, 'invalid:action' as OperationLogAction, {
-          targetKey: 'secret-target',
-        })
-        return c.text('invalid-ok')
-      })
-      .post('/extra', (c) => {
-        recordOperation(c, 'system:user:update', {
-          targetKey: 'secret-target',
-          extra: 'secret-extra',
-        } as never)
-        return c.text('extra-ok')
-      })
-      .post('/duplicate', (c) => {
-        recordOperation(c, 'system:user:update', { targetKey: 'first-secret' })
-        recordOperation(c, 'system:user:delete', { targetKey: 'second-secret' })
-        return c.text('duplicate-ok')
-      })
+      .post(
+        '/empty',
+        operationLog('system:user:update', () => ({ targetKey: ' ', targetLabel: '' })),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/invalid-action',
+        // @ts-expect-error Unknown actions must also be rejected at runtime.
+        operationLog('invalid:action', () => ({ targetKey: 'secret' })),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/extra',
+        operationLog('system:user:update', () => ({ targetKey: 'secret', extra: 'secret-extra' })),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/collection-target',
+        // @ts-expect-error Fixed collection actions cannot take target resolvers.
+        operationLog('system:user:list', () => ({ targetKey: 'secret' })),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/selected-collection-target',
+        operationLog(
+          // @ts-expect-error Dynamic actions with targets must resolve to entity actions.
+          () => 'system:user:list',
+          () => ({ targetKey: 'secret' }),
+        ),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/action-error',
+        operationLog(
+          () => {
+            throw new Error('action-secret')
+          },
+          () => ({ targetKey: 'secret' }),
+        ),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/target-error',
+        operationLog('system:user:update', () => {
+          throw new Error('target-secret')
+        }),
+        (c) => c.text(business(c.req.path)),
+      )
+      .post(
+        '/duplicate',
+        operationLog('system:user:update', () => ({ targetKey: 'first-secret' })),
+        operationLog('system:user:delete', secondTarget),
+        (c) => c.text(business(c.req.path)),
+      )
 
-    const responses: Response[] = []
+    const paths = [
+      '/empty',
+      '/invalid-action',
+      '/extra',
+      '/collection-target',
+      '/selected-collection-target',
+      '/action-error',
+      '/target-error',
+      '/duplicate',
+    ]
+    for (const path of paths) {
+      const response = await app.request(path, { method: 'POST' })
 
-    for (const path of ['/empty', '/invalid', '/extra', '/duplicate']) {
-      responses.push(await app.request(path, { method: 'POST' }))
+      expect(response.status).toBe(200)
+      expect(await response.text()).toBe(path)
     }
 
-    expect(await Promise.all(responses.map((response) => response.text()))).toEqual([
-      'empty-ok',
-      'invalid-ok',
-      'extra-ok',
-      'duplicate-ok',
-    ])
+    expect(business.mock.calls).toEqual(paths.map((path) => [path]))
+    expect(secondTarget).not.toHaveBeenCalled()
     expect(events).toEqual([])
-    expect(logger.warn).toHaveBeenCalledTimes(4)
+    expect(logger.warn).toHaveBeenCalledTimes(paths.length)
     expect(logger.warn).toHaveBeenNthCalledWith(
-      4,
+      paths.length,
       {
         operationLogErrorKind: 'duplicate_registration',
         requestId: '10000000-0000-4000-8000-000000000003',
@@ -251,10 +371,11 @@ describe('operation log registration and middleware', () => {
     })
     const app = createTestApp({ events, logger, receiver })
       .get('/unregistered', (c) => c.text('unregistered-ok'))
-      .post('/registered', (c) => {
-        recordOperation(c, 'system:user:delete', { targetKey: 'user-1' })
-        return c.text('registered-ok')
-      })
+      .post(
+        '/registered',
+        operationLog('system:user:delete', () => ({ targetKey: 'user-1' })),
+        (c) => c.text('registered-ok'),
+      )
 
     expect(await (await app.request('/unregistered')).text()).toBe('unregistered-ok')
     expect(await (await app.request('/registered', { method: 'POST' })).text()).toBe(
@@ -276,11 +397,14 @@ describe('operation log registration and middleware', () => {
     const logger = createLoggerSpy()
     let monotonicTime = 10
     vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
-    const app = createTestApp({ events, logger }).post('/invalid-duration', (c) => {
-      recordOperation(c, 'system:user:delete', { targetKey: 'user-1' })
-      monotonicTime = 9
-      return c.text('business-ok')
-    })
+    const app = createTestApp({ events, logger }).post(
+      '/invalid-duration',
+      operationLog('system:user:delete', () => ({ targetKey: 'user-1' })),
+      (c) => {
+        monotonicTime = 9
+        return c.text('business-ok')
+      },
+    )
 
     const response = await app.request('/invalid-duration', { method: 'POST' })
 
@@ -313,18 +437,24 @@ describe('operation log registration and middleware', () => {
     const receiver = vi.fn<OperationLogEventReceiver>(() => {
       throw new Error('receiver-secret')
     })
-    const app = createTestApp({ events: [], logger, receiver }).post('/users/:id', (c) => {
-      const id = c.req.param('id')
+    const continueRequest: MiddlewareHandler<TestEnv> = async (_c, next) => next()
+    const registerAgain =
+      kind === 'duplicate_registration'
+        ? operationLog('system:user:delete', () => ({ targetKey: 'duplicate-secret' }))
+        : continueRequest
+    const app = createTestApp({ events: [], logger, receiver }).post(
+      '/users/:id',
+      targetParamValidator,
+      operationLog<TargetParamInput>('system:user:delete', (request) => {
+        if (kind === 'invalid_registration') {
+          throw new Error('target-resolver-secret')
+        }
 
-      recordOperation(c, 'system:user:delete', {
-        targetKey: kind === 'invalid_registration' ? ' ' : id,
-      })
-      if (kind === 'duplicate_registration') {
-        recordOperation(c, 'system:user:delete', { targetKey: id })
-      }
-
-      return c.text('business-ok', 202)
-    })
+        return { targetKey: request.valid('param').id }
+      }),
+      registerAgain,
+      (c) => c.text('business-ok', 202),
+    )
     const path = '/users/target-1'
     const response = await app.request(path, { method: 'POST' })
     const requestId = response.headers.get('x-request-id')

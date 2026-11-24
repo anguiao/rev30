@@ -14,7 +14,12 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+  type OperationLogInput,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   BuiltInUserMutationError,
@@ -109,38 +114,53 @@ export function createUserRoutes(database: Db) {
   app.onError((error, c) => userErrorResponse(error, c))
 
   return app
-    .get('/', requireAccess('system:user:list'), userListQueryValidator, async (c) => {
-      const query: UserListQuery = c.req.valid('query')
+    .get(
+      '/',
+      requireAccess('system:user:list'),
+      userListQueryValidator,
+      operationLog('system:user:list'),
+      async (c) => {
+        const query: UserListQuery = c.req.valid('query')
 
-      return c.json(await service.list(query))
-    })
+        return c.json(await service.list(query))
+      },
+    )
     .get('/options', requireAccess('system:user:list'), userOptionsQueryValidator, async (c) => {
       const query: UserOptionsQuery = c.req.valid('query')
 
       return c.json(await service.options(query))
     })
-    .post('/', requireAccess('system:user:create'), userCreateBodyValidator, async (c) => {
-      const body: UserCreateInput = c.req.valid('json')
-      recordOperation(c, 'system:user:create', {
-        targetKey: body.username,
-        targetLabel: body.nickname,
-      })
+    .post(
+      '/',
+      requireAccess('system:user:create'),
+      userCreateBodyValidator,
+      operationLog<OperationLogInput<typeof userCreateBodyValidator>>(
+        'system:user:create',
+        (request) => {
+          const { username, nickname } = request.valid('json')
 
-      return c.json(
-        await service.create(body, {
-          accessCodes: c.get('accessCodes'),
-          isAdmin: c.get('isAdmin'),
-        }),
-        201,
-      )
-    })
+          return { targetKey: username, targetLabel: nickname }
+        },
+      ),
+      async (c) => {
+        const body: UserCreateInput = c.req.valid('json')
+
+        return c.json(
+          await service.create(body, {
+            accessCodes: c.get('accessCodes'),
+            isAdmin: c.get('isAdmin'),
+          }),
+          201,
+        )
+      },
+    )
     .post(
       '/:id/password/reset',
       requireAccess('system:user:reset-password'),
       userIdValidator,
+      operationLog('system:user:reset-password', operationLogIdTarget),
       async (c) => {
         const { id } = c.req.valid('param')
-        recordOperation(c, 'system:user:reset-password', { targetKey: id })
 
         return c.json(
           await service.resetPassword(id, {
@@ -150,23 +170,32 @@ export function createUserRoutes(database: Db) {
         )
       },
     )
-    .get('/:id', requireAccess('system:user:list'), userIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+    .get(
+      '/:id',
+      requireAccess('system:user:list'),
+      userIdValidator,
+      operationLog('system:user:view', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      return c.json(await service.get(id))
-    })
+        return c.json(await service.get(id))
+      },
+    )
     .patch(
       '/:id',
       requireAccess('system:user:update'),
       userIdValidator,
       userUpdateBodyValidator,
+      operationLog<
+        OperationLogInput<typeof userIdValidator> &
+          OperationLogInput<typeof userUpdateBodyValidator>
+      >('system:user:update', (request) => ({
+        targetKey: request.valid('param').id,
+        targetLabel: request.valid('json').nickname,
+      })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: UserUpdateInput = c.req.valid('json')
-        recordOperation(c, 'system:user:update', {
-          targetKey: id,
-          ...(body.nickname !== undefined ? { targetLabel: body.nickname } : {}),
-        })
 
         return c.json(
           await service.update(id, body, {
@@ -176,15 +205,20 @@ export function createUserRoutes(database: Db) {
         )
       },
     )
-    .delete('/:id', requireAccess('system:user:delete'), userIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-      recordOperation(c, 'system:user:delete', { targetKey: id })
+    .delete(
+      '/:id',
+      requireAccess('system:user:delete'),
+      userIdValidator,
+      operationLog('system:user:delete', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      await service.delete(id, {
-        accessCodes: c.get('accessCodes'),
-        isAdmin: c.get('isAdmin'),
-      })
+        await service.delete(id, {
+          accessCodes: c.get('accessCodes'),
+          isAdmin: c.get('isAdmin'),
+        })
 
-      return c.body(null, 204)
-    })
+        return c.body(null, 204)
+      },
+    )
 }

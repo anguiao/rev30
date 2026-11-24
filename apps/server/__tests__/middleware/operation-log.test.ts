@@ -4,6 +4,7 @@ import type { Logger } from 'pino'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { rootErrorHandler } from '../../src/app'
 import type { AuthEnv } from '../../src/middleware/auth'
+import { createRequestLogger } from '../../src/middleware/logger'
 import {
   createOperationLogMiddleware,
   recordOperation,
@@ -29,13 +30,22 @@ function createTestApp(options: {
 }) {
   const app = new Hono<TestEnv>()
     .use('*', async (c, next) => {
-      c.set('requestContext', {
+      const requestBindings = {
         requestId: '10000000-0000-4000-8000-000000000003',
         clientIp: '192.0.2.1',
         clientIpSource: 'x-forwarded-for',
+      } as const
+
+      c.set('requestContext', {
+        ...requestBindings,
         userAgent: 'Example/1.0',
-        logger: options.logger,
+        logger: options.logger.child({
+          ...requestBindings,
+          method: c.req.method,
+          path: c.req.path,
+        }),
       })
+      c.header('X-Request-Id', requestBindings.requestId)
       c.set('currentUser', {
         id: '10000000-0000-4000-8000-000000000001',
         username: 'a'.repeat(600),
@@ -56,13 +66,12 @@ function createTestApp(options: {
       c.set('isAdmin', true)
       await next()
     })
+    .use('*', createRequestLogger())
     .use(
       '*',
       createOperationLogMiddleware(
-        options.receiver ??
-          ((event) => {
-            options.events.push(event)
-          }),
+        options.receiver ?? ((event) => options.events.push(event)),
+        options.logger,
       ),
     )
     .onError(rootErrorHandler)
@@ -284,6 +293,63 @@ describe('operation log registration and middleware', () => {
         requestId: '10000000-0000-4000-8000-000000000003',
       },
       'operation log finalization failed',
+    )
+  })
+
+  it.each([
+    { kind: 'invalid_registration', msg: 'operation log registration discarded' },
+    { kind: 'duplicate_registration', msg: 'operation log registration discarded' },
+    { kind: 'finalization_error', msg: 'operation log finalization failed' },
+  ])('serializes $kind with only the error kind and request ID', async ({ kind, msg }) => {
+    const records: Record<string, unknown>[] = []
+    const logger = createLogger({
+      level: 'info',
+      destination: {
+        write(line) {
+          records.push(JSON.parse(line) as Record<string, unknown>)
+        },
+      },
+    })
+    const receiver = vi.fn<OperationLogEventReceiver>(() => {
+      throw new Error('receiver-secret')
+    })
+    const app = createTestApp({ events: [], logger, receiver }).post('/users/:id', (c) => {
+      const id = c.req.param('id')
+
+      recordOperation(c, 'system:user:delete', {
+        targetKey: kind === 'invalid_registration' ? ' ' : id,
+      })
+      if (kind === 'duplicate_registration') {
+        recordOperation(c, 'system:user:delete', { targetKey: id })
+      }
+
+      return c.text('business-ok', 202)
+    })
+    const path = '/users/target-1'
+    const response = await app.request(path, { method: 'POST' })
+    const requestId = response.headers.get('x-request-id')
+    const pinoFields = new Set(['level', 'time', 'pid', 'hostname', 'name', 'msg'])
+    const diagnosticFields = records
+      .filter((record) => record.msg === msg)
+      .map((record) =>
+        Object.fromEntries(Object.entries(record).filter(([key]) => !pinoFields.has(key))),
+      )
+
+    expect(response.status).toBe(202)
+    expect(await response.text()).toBe('business-ok')
+    expect(requestId).toEqual(expect.any(String))
+    expect(receiver).toHaveBeenCalledTimes(kind === 'finalization_error' ? 1 : 0)
+    expect(diagnosticFields).toEqual([{ operationLogErrorKind: kind, requestId }])
+    expect(records).toContainEqual(
+      expect.objectContaining({
+        msg: 'request completed',
+        requestId,
+        method: 'POST',
+        path,
+        clientIp: '192.0.2.1',
+        clientIpSource: 'x-forwarded-for',
+        status: 202,
+      }),
     )
   })
 })

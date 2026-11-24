@@ -60,7 +60,7 @@ export function createApp(database: Db, options: CreateAppOptions) {
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
     .use('*', createRequestLogger())
-    .use('*', createOperationLogMiddleware(options.operationLogReceiver))
+    .use('*', createOperationLogMiddleware(options.operationLogReceiver, appLogger))
     .onError(rootErrorHandler)
     .route('/api', api)
 }

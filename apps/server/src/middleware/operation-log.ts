@@ -7,6 +7,7 @@ import {
   type OperationLogAction,
 } from '@rev30/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
+import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { OperationLogEvent, OperationLogEventReceiver } from '../runtime/operation-log'
 import type { AuthEnv } from './auth'
@@ -159,7 +160,8 @@ function createOperationLogEvent(
 
 export function createOperationLogMiddleware(
   receiver: OperationLogEventReceiver,
-): MiddlewareHandler<RequestContextEnv & OperationLogEnv> {
+  logger: Logger,
+): MiddlewareHandler<OperationLogEnv> {
   return async (c, next) => {
     await next()
     const registration = c.get('operationLogRegistration')
@@ -168,10 +170,9 @@ export function createOperationLogMiddleware(
       return
     }
 
-    const logger = c.get('requestContext').logger
-
     if ('operationLogErrorKind' in registration) {
-      logger.warn(registration, 'operation log registration discarded')
+      const { operationLogErrorKind, requestId } = registration
+      logger.warn({ operationLogErrorKind, requestId }, 'operation log registration discarded')
       return
     }
 

@@ -14,8 +14,16 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
+import {
+  operationLogCodeAndNameTarget,
+  operationLogIdAndNameTarget,
+} from '../operation-log-targets'
 import {
   DepartmentConflictError,
   DepartmentDeleteConflictError,
@@ -125,12 +133,9 @@ export function createDepartmentRoutes(database: Db) {
       '/',
       requireAccess('system:department:create'),
       departmentCreateBodyValidator,
+      operationLog('system:department:create', operationLogCodeAndNameTarget),
       async (c) => {
         const body: DepartmentCreateInput = c.req.valid('json')
-        recordOperation(c, 'system:department:create', {
-          targetKey: body.code,
-          targetLabel: body.name,
-        })
 
         return c.json(await service.create(body), 201)
       },
@@ -140,23 +145,25 @@ export function createDepartmentRoutes(database: Db) {
       requireAccess('system:department:update'),
       departmentIdValidator,
       departmentUpdateBodyValidator,
+      operationLog('system:department:update', operationLogIdAndNameTarget),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DepartmentUpdateInput = c.req.valid('json')
-        recordOperation(c, 'system:department:update', {
-          targetKey: id,
-          ...(body.name !== undefined ? { targetLabel: body.name } : {}),
-        })
 
         return c.json(await service.update(id, body))
       },
     )
-    .delete('/:id', requireAccess('system:department:delete'), departmentIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-      recordOperation(c, 'system:department:delete', { targetKey: id })
+    .delete(
+      '/:id',
+      requireAccess('system:department:delete'),
+      departmentIdValidator,
+      operationLog('system:department:delete', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      await service.delete(id)
+        await service.delete(id)
 
-      return c.body(null, 204)
-    })
+        return c.body(null, 204)
+      },
+    )
 }

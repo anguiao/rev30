@@ -1,5 +1,4 @@
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   RESOURCE_TYPE_ACTION,
@@ -10,9 +9,10 @@ import {
 } from '@rev30/contracts'
 import type { createRoleService } from '../../../../src/modules/system/roles/service'
 import type { requireAccess } from '../../../../src/middleware/access'
-import type { AuthEnv } from '../../../../src/middleware/auth'
 import { RoleConflictError } from '../../../../src/modules/system/roles/errors'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 type RoleService = ReturnType<typeof createRoleService>
 
@@ -78,23 +78,15 @@ vi.mock('../../../../src/middleware/access', () => ({
   requireAccess: mocks.requireAccess,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: vi.fn(),
-}))
-
 vi.mock('../../../../src/modules/system/roles/service', () => ({
   createRoleService: mocks.createRoleService,
 }))
 
-function createTestApp() {
-  return new Hono<AuthEnv>()
-    .use('*', async (c, next) => {
-      c.set('currentUser', actor)
-      c.set('accessCodes', userAccess.accessCodes)
-      c.set('isAdmin', userAccess.isAdmin)
-      await next()
-    })
-    .route('/api/system/roles', createRoleRoutes({} as never))
+function createTestApp(events: OperationLogEvent[] = []) {
+  return createOperationLogRouteTestApp(events, { ...userAccess, currentUser: actor }).route(
+    '/api/system/roles',
+    createRoleRoutes({} as never),
+  )
 }
 
 describe('role routes', () => {
@@ -255,12 +247,14 @@ describe('role routes', () => {
   })
 
   it('returns query validation errors before calling the role service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const listResponse = await app.request('/api/system/roles?page=0')
     expect(listResponse.status).toBe(400)
     expect(await listResponse.json()).toEqual({ message: '查询参数无效' })
     expect(mocks.service.list).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('returns option query validation errors before calling the role service', async () => {
@@ -296,7 +290,8 @@ describe('role routes', () => {
   })
 
   it('maps conflict errors to route responses', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     mocks.service.update.mockRejectedValueOnce(new RoleConflictError())
     const conflictResponse = await app.request(`/api/system/roles/${roleId}`, {
@@ -309,5 +304,14 @@ describe('role routes', () => {
       field: 'code',
       message: '编码已存在',
     })
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:role:update',
+        targetKey: roleId,
+        targetLabel: null,
+        httpStatus: 409,
+        result: 'failure',
+      }),
+    ])
   })
 })

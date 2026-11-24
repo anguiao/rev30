@@ -4,7 +4,6 @@ import {
   type DictionaryOptionsResponse,
 } from '@rev30/contracts'
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DictionaryCodeConflictError,
@@ -13,9 +12,10 @@ import {
   DictionaryNotFoundError,
 } from '../../../../src/modules/system/dictionaries/errors'
 import type { createDictionaryService } from '../../../../src/modules/system/dictionaries/service'
-import type { recordOperation } from '../../../../src/middleware/operation-log'
 import type { requireAccess } from '../../../../src/middleware/access'
 import { createDictionaryRoutes } from '../../../../src/modules/system/dictionaries/routes'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 type DictionaryService = ReturnType<typeof createDictionaryService>
 
@@ -59,7 +59,6 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createDictionaryService: vi.fn(() => service),
-    recordOperation: vi.fn<typeof recordOperation>(),
     requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
@@ -73,12 +72,11 @@ vi.mock('../../../../src/modules/system/dictionaries/service', () => ({
   createDictionaryService: mocks.createDictionaryService,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: mocks.recordOperation,
-}))
-
-function createTestApp() {
-  return new Hono().route('/api/system/dictionaries', createDictionaryRoutes({} as never))
+function createTestApp(events: OperationLogEvent[] = []) {
+  return createOperationLogRouteTestApp(events).route(
+    '/api/system/dictionaries',
+    createDictionaryRoutes({} as never),
+  )
 }
 
 describe('dictionary routes', () => {
@@ -157,7 +155,8 @@ describe('dictionary routes', () => {
   )
 
   it('parses list query and delegates to dictionary service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const response = await app.request(
       '/api/system/dictionaries?page=2&pageSize=5&keyword=gend&status=1',
@@ -170,10 +169,12 @@ describe('dictionary routes', () => {
       keyword: 'gend',
       status: DICTIONARY_STATUS_ENABLED,
     })
+    expect(events).toEqual([])
   })
 
   it('parses options query and delegates to dictionary service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const response = await app.request('/api/system/dictionaries/options?codes=gender,user_status')
 
@@ -182,10 +183,12 @@ describe('dictionary routes', () => {
       codes: ['gender', 'user_status'],
     })
     expect(mocks.service.get).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('delegates detail/create/update/delete requests', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const detailResponse = await app.request(`/api/system/dictionaries/${dictionaryId}`)
     expect(detailResponse.status).toBe(200)
@@ -263,37 +266,33 @@ describe('dictionary routes', () => {
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(dictionaryId)
-    expect(
-      mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
-    ).toEqual([
-      {
+    expect(events).toEqual([
+      expect.objectContaining({
         action: 'system:dictionary:create',
-        target: { targetKey: 'gender', targetLabel: '性别' },
-      },
-      {
+        targetKey: 'gender',
+        targetLabel: '性别',
+        httpStatus: 201,
+      }),
+      expect.objectContaining({
         action: 'system:dictionary:update',
-        target: { targetKey: dictionaryId, targetLabel: '性别' },
-      },
-      {
+        targetKey: dictionaryId,
+        targetLabel: '性别',
+        httpStatus: 200,
+      }),
+      expect.objectContaining({
         action: 'system:dictionary:delete',
-        target: { targetKey: dictionaryId },
-      },
+        targetKey: dictionaryId,
+        targetLabel: null,
+        httpStatus: 204,
+      }),
     ])
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.create.mock.invocationCallOrder[0]!,
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[1]).toBeLessThan(
-      mocks.service.update.mock.invocationCallOrder[0]!,
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[2]).toBeLessThan(
-      mocks.service.delete.mock.invocationCallOrder[0]!,
-    )
   })
 
   it.each(['POST', 'PUT'] as const)(
     'rejects duplicate item values before %s reaches the service',
     async (method) => {
-      const app = createTestApp()
+      const events: OperationLogEvent[] = []
+      const app = createTestApp(events)
       const response = await app.request(
         `/api/system/dictionaries${method === 'PUT' ? `/${dictionaryId}` : ''}`,
         {
@@ -329,12 +328,13 @@ describe('dictionary routes', () => {
       expect(await response.json()).toEqual({ message: '请求体无效' })
       expect(mocks.service.create).not.toHaveBeenCalled()
       expect(mocks.service.update).not.toHaveBeenCalled()
-      expect(mocks.recordOperation).not.toHaveBeenCalled()
+      expect(events).toEqual([])
     },
   )
 
   it('returns validation errors before calling service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const queryResponse = await app.request('/api/system/dictionaries?page=0')
     expect(queryResponse.status).toBe(400)
@@ -375,14 +375,15 @@ describe('dictionary routes', () => {
     expect(updateResponse.status).toBe(400)
     expect(await updateResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
-    expect(mocks.recordOperation).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('does not register requests rejected by the basic access guard', async () => {
     mocks.accessMiddleware.mockImplementationOnce(async (c) => {
       c.res = c.json({ message: '无权访问' }, 403)
     })
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const response = await app.request('/api/system/dictionaries', {
       method: 'POST',
@@ -391,12 +392,13 @@ describe('dictionary routes', () => {
     })
 
     expect(response.status).toBe(403)
-    expect(mocks.recordOperation).not.toHaveBeenCalled()
+    expect(events).toEqual([])
     expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
   it('maps dictionary domain errors to route responses', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     mocks.service.get.mockRejectedValueOnce(new DictionaryNotFoundError())
     const notFoundResponse = await app.request(`/api/system/dictionaries/${dictionaryId}`)
@@ -414,9 +416,15 @@ describe('dictionary routes', () => {
       field: 'code',
       message: '字典编码已存在',
     })
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.create.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:dictionary:create',
+        targetKey: 'gender',
+        targetLabel: '性别',
+        httpStatus: 409,
+        result: 'failure',
+      }),
+    ])
 
     mocks.service.update.mockRejectedValueOnce(new DictionaryItemValueConflictError())
     const duplicateItemValueResponse = await app.request(

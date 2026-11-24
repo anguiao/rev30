@@ -14,8 +14,16 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
+import {
+  operationLogCodeAndNameTarget,
+  operationLogIdAndNameTarget,
+} from '../operation-log-targets'
 import {
   DictionaryCodeConflictError,
   DictionaryInvalidItemError,
@@ -108,12 +116,9 @@ export function createDictionaryRoutes(database: Db) {
       '/',
       requireAccess('system:dictionary:create'),
       dictionaryCreateBodyValidator,
+      operationLog('system:dictionary:create', operationLogCodeAndNameTarget),
       async (c) => {
         const body: DictionaryCreateInput = c.req.valid('json')
-        recordOperation(c, 'system:dictionary:create', {
-          targetKey: body.code,
-          targetLabel: body.name,
-        })
 
         return c.json(await service.create(body), 201)
       },
@@ -123,23 +128,25 @@ export function createDictionaryRoutes(database: Db) {
       requireAccess('system:dictionary:update'),
       dictionaryIdValidator,
       dictionaryUpdateBodyValidator,
+      operationLog('system:dictionary:update', operationLogIdAndNameTarget),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DictionaryUpdateInput = c.req.valid('json')
-        recordOperation(c, 'system:dictionary:update', {
-          targetKey: id,
-          targetLabel: body.name,
-        })
 
         return c.json(await service.update(id, body))
       },
     )
-    .delete('/:id', requireAccess('system:dictionary:delete'), dictionaryIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-      recordOperation(c, 'system:dictionary:delete', { targetKey: id })
+    .delete(
+      '/:id',
+      requireAccess('system:dictionary:delete'),
+      dictionaryIdValidator,
+      operationLog('system:dictionary:delete', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      await service.delete(id)
+        await service.delete(id)
 
-      return c.body(null, 204)
-    })
+        return c.body(null, 204)
+      },
+    )
 }

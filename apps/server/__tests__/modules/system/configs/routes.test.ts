@@ -1,10 +1,10 @@
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CONFIG_VALUE_TYPE_NUMBER, type Config } from '@rev30/contracts'
 import type { createConfigService } from '../../../../src/modules/system/configs/service'
 import type { requireAccess } from '../../../../src/middleware/access'
 import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 type ConfigService = ReturnType<typeof createConfigService>
 
@@ -39,16 +39,15 @@ vi.mock('../../../../src/middleware/access', () => ({
   requireAccess: mocks.requireAccess,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: vi.fn(),
-}))
-
 vi.mock('../../../../src/modules/system/configs/service', () => ({
   createConfigService: mocks.createConfigService,
 }))
 
 function createTestApp() {
-  return new Hono().route('/api/system/configs', createConfigRoutes({} as never))
+  return createOperationLogRouteTestApp([]).route(
+    '/api/system/configs',
+    createConfigRoutes({} as never),
+  )
 }
 
 describe('config routes', () => {

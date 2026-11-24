@@ -1,5 +1,4 @@
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEPARTMENT_STATUS_ENABLED,
@@ -9,6 +8,7 @@ import {
 import type { createDepartmentService } from '../../../../src/modules/system/departments/service'
 import type { requireAccess } from '../../../../src/middleware/access'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 type DepartmentService = ReturnType<typeof createDepartmentService>
 
@@ -48,16 +48,15 @@ vi.mock('../../../../src/middleware/access', () => ({
   requireAccess: mocks.requireAccess,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: vi.fn(),
-}))
-
 vi.mock('../../../../src/modules/system/departments/service', () => ({
   createDepartmentService: mocks.createDepartmentService,
 }))
 
 function createTestApp() {
-  return new Hono().route('/api/system/departments', createDepartmentRoutes({} as never))
+  return createOperationLogRouteTestApp([]).route(
+    '/api/system/departments',
+    createDepartmentRoutes({} as never),
+  )
 }
 
 describe('department routes', () => {

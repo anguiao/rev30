@@ -14,8 +14,16 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
+import {
+  operationLogCodeAndNameTarget,
+  operationLogIdAndNameTarget,
+} from '../operation-log-targets'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,
@@ -97,48 +105,59 @@ export function createRoleRoutes(database: Db) {
   app.onError((error, c) => roleErrorResponse(error, c))
 
   return app
-    .get('/', requireAccess('system:role:list'), roleListQueryValidator, async (c) => {
-      const query: RoleListQuery = c.req.valid('query')
+    .get(
+      '/',
+      requireAccess('system:role:list'),
+      roleListQueryValidator,
+      operationLog('system:role:list'),
+      async (c) => {
+        const query: RoleListQuery = c.req.valid('query')
 
-      return c.json(await service.list(query))
-    })
+        return c.json(await service.list(query))
+      },
+    )
     .get('/options', requireAccess('system:role:list'), roleOptionsQueryValidator, async (c) => {
       const query: RoleOptionsQuery = c.req.valid('query')
 
       return c.json(await service.options(query))
     })
-    .get('/:id', requireAccess('system:role:list'), roleIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+    .get(
+      '/:id',
+      requireAccess('system:role:list'),
+      roleIdValidator,
+      operationLog('system:role:view', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      return c.json(await service.get(id))
-    })
-    .post('/', requireAccess('system:role:create'), roleCreateBodyValidator, async (c) => {
-      const body: RoleCreateInput = c.req.valid('json')
-      recordOperation(c, 'system:role:create', {
-        targetKey: body.code,
-        targetLabel: body.name,
-      })
+        return c.json(await service.get(id))
+      },
+    )
+    .post(
+      '/',
+      requireAccess('system:role:create'),
+      roleCreateBodyValidator,
+      operationLog('system:role:create', operationLogCodeAndNameTarget),
+      async (c) => {
+        const body: RoleCreateInput = c.req.valid('json')
 
-      return c.json(
-        await service.create(body, {
-          accessCodes: c.get('accessCodes'),
-          isAdmin: c.get('isAdmin'),
-        }),
-        201,
-      )
-    })
+        return c.json(
+          await service.create(body, {
+            accessCodes: c.get('accessCodes'),
+            isAdmin: c.get('isAdmin'),
+          }),
+          201,
+        )
+      },
+    )
     .patch(
       '/:id',
       requireAccess('system:role:update'),
       roleIdValidator,
       roleUpdateBodyValidator,
+      operationLog('system:role:update', operationLogIdAndNameTarget),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: RoleUpdateInput = c.req.valid('json')
-        recordOperation(c, 'system:role:update', {
-          targetKey: id,
-          ...(body.name !== undefined ? { targetLabel: body.name } : {}),
-        })
 
         return c.json(
           await service.update(id, body, {
@@ -148,15 +167,20 @@ export function createRoleRoutes(database: Db) {
         )
       },
     )
-    .delete('/:id', requireAccess('system:role:delete'), roleIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-      recordOperation(c, 'system:role:delete', { targetKey: id })
+    .delete(
+      '/:id',
+      requireAccess('system:role:delete'),
+      roleIdValidator,
+      operationLog('system:role:delete', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      await service.delete(id, {
-        accessCodes: c.get('accessCodes'),
-        isAdmin: c.get('isAdmin'),
-      })
+        await service.delete(id, {
+          accessCodes: c.get('accessCodes'),
+          isAdmin: c.get('isAdmin'),
+        })
 
-      return c.body(null, 204)
-    })
+        return c.body(null, 204)
+      },
+    )
 }

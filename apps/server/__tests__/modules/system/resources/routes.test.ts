@@ -1,5 +1,4 @@
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   RESOURCE_OPEN_TARGET_SELF,
@@ -13,8 +12,8 @@ import {
 } from '@rev30/contracts'
 import type { createResourceService } from '../../../../src/modules/system/resources/service'
 import type { requireAccess } from '../../../../src/middleware/access'
-import type { AuthEnv } from '../../../../src/middleware/auth'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 type ResourceService = ReturnType<typeof createResourceService>
 
@@ -80,23 +79,15 @@ vi.mock('../../../../src/middleware/access', () => ({
   requireAccess: mocks.requireAccess,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: vi.fn(),
-}))
-
 vi.mock('../../../../src/modules/system/resources/service', () => ({
   createResourceService: mocks.createResourceService,
 }))
 
 function createTestApp() {
-  return new Hono<AuthEnv>()
-    .use('*', async (c, next) => {
-      c.set('currentUser', actor)
-      c.set('accessCodes', userAccess.accessCodes)
-      c.set('isAdmin', userAccess.isAdmin)
-      await next()
-    })
-    .route('/api/system/resources', createResourceRoutes({} as never))
+  return createOperationLogRouteTestApp([], { ...userAccess, currentUser: actor }).route(
+    '/api/system/resources',
+    createResourceRoutes({} as never),
+  )
 }
 
 describe('resource routes', () => {

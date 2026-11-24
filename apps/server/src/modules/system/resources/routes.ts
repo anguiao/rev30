@@ -14,8 +14,16 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
+import {
+  operationLogCodeAndNameTarget,
+  operationLogIdAndNameTarget,
+} from '../operation-log-targets'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,
@@ -107,12 +115,23 @@ export function createResourceRoutes(database: Db) {
   app.onError((error, c) => resourceErrorResponse(error, c))
 
   return app
-    .get('/', requireAccess('system:resource:list'), resourceListQueryValidator, async (c) => {
-      const query: ResourceListQuery = c.req.valid('query')
+    .get(
+      '/',
+      requireAccess('system:resource:list'),
+      resourceListQueryValidator,
+      operationLog('system:resource:list'),
+      async (c) => {
+        const query: ResourceListQuery = c.req.valid('query')
 
-      return c.json(await service.list(query))
-    })
-    .get('/tree', requireAccess('system:resource:list'), async (c) => c.json(await service.tree()))
+        return c.json(await service.list(query))
+      },
+    )
+    .get(
+      '/tree',
+      requireAccess('system:resource:list'),
+      operationLog('system:resource:list'),
+      async (c) => c.json(await service.tree()),
+    )
     .get(
       '/options/tree',
       requireAccess('system:resource:list'),
@@ -123,38 +142,43 @@ export function createResourceRoutes(database: Db) {
         return c.json(await service.treeOptions(query))
       },
     )
-    .get('/:id', requireAccess('system:resource:list'), resourceIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+    .get(
+      '/:id',
+      requireAccess('system:resource:list'),
+      resourceIdValidator,
+      operationLog('system:resource:view', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      return c.json(await service.get(id))
-    })
-    .post('/', requireAccess('system:resource:create'), resourceCreateBodyValidator, async (c) => {
-      const body: ResourceCreateInput = c.req.valid('json')
-      recordOperation(c, 'system:resource:create', {
-        targetKey: body.code,
-        targetLabel: body.name,
-      })
+        return c.json(await service.get(id))
+      },
+    )
+    .post(
+      '/',
+      requireAccess('system:resource:create'),
+      resourceCreateBodyValidator,
+      operationLog('system:resource:create', operationLogCodeAndNameTarget),
+      async (c) => {
+        const body: ResourceCreateInput = c.req.valid('json')
 
-      return c.json(
-        await service.create(body, {
-          accessCodes: c.get('accessCodes'),
-          isAdmin: c.get('isAdmin'),
-        }),
-        201,
-      )
-    })
+        return c.json(
+          await service.create(body, {
+            accessCodes: c.get('accessCodes'),
+            isAdmin: c.get('isAdmin'),
+          }),
+          201,
+        )
+      },
+    )
     .patch(
       '/:id',
       requireAccess('system:resource:update'),
       resourceIdValidator,
       resourceUpdateBodyValidator,
+      operationLog('system:resource:update', operationLogIdAndNameTarget),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: ResourceUpdateInput = c.req.valid('json')
-        recordOperation(c, 'system:resource:update', {
-          targetKey: id,
-          ...(body.name !== undefined ? { targetLabel: body.name } : {}),
-        })
 
         return c.json(
           await service.update(id, body, {
@@ -164,15 +188,20 @@ export function createResourceRoutes(database: Db) {
         )
       },
     )
-    .delete('/:id', requireAccess('system:resource:delete'), resourceIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-      recordOperation(c, 'system:resource:delete', { targetKey: id })
+    .delete(
+      '/:id',
+      requireAccess('system:resource:delete'),
+      resourceIdValidator,
+      operationLog('system:resource:delete', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      await service.delete(id, {
-        accessCodes: c.get('accessCodes'),
-        isAdmin: c.get('isAdmin'),
-      })
+        await service.delete(id, {
+          accessCodes: c.get('accessCodes'),
+          isAdmin: c.get('isAdmin'),
+        })
 
-      return c.body(null, 204)
-    })
+        return c.body(null, 204)
+      },
+    )
 }

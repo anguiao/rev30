@@ -1,16 +1,28 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  User,
-  UserCreateResponse,
-  UserListResponse,
-  UserResetPasswordResponse,
+import {
+  RESOURCE_STATUS_DISABLED,
+  type Resource,
+  type ResourceListResponse,
+  type ResourceTreeOptionsResponse,
+  type ResourceTreeResponse,
+  type Role,
+  type RoleListResponse,
+  type User,
+  type UserCreateResponse,
+  type UserListResponse,
+  type UserResetPasswordResponse,
 } from '@rev30/contracts'
 import { describe, expect } from 'vitest'
 import { createApp } from '../../helpers/app'
+import { systemRoleResources } from '../../../src/db/schema'
 import type { OperationLogEvent } from '../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { jsonRequest, responseJson } from '../../helpers/http'
-import { createSystemUserFixture } from '../../helpers/system'
+import {
+  createSystemResourceFixture,
+  createSystemRoleFixture,
+  createSystemUserFixture,
+} from '../../helpers/system'
 import { dbTest } from '../../fixtures/database'
 
 const configKey = 'auth.loginFailureMaxAttempts'
@@ -127,6 +139,113 @@ describe('system operation log integration', () => {
       ])
     },
   )
+
+  dbTest('audits the role editor detail and role list without auditing options', async ({ db }) => {
+    const events: OperationLogEvent[] = []
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
+    const reader = await createSystemAccessFixture(db, {
+      accessCodes: ['system:role:list', 'system:resource:list'],
+    })
+    const headers = reader.authHeaders
+    const role = await createSystemRoleFixture(db, {
+      code: 'audit-editor-role',
+      name: 'Audit Editor Role',
+    })
+    const resource = await createSystemResourceFixture(db, {
+      code: 'audit-editor-resource',
+      name: 'Audit Editor Resource',
+      status: RESOURCE_STATUS_DISABLED,
+    })
+    await db.insert(systemRoleResources).values({ roleId: role.id, resourceId: resource.id })
+
+    const detail = await app.request(`/api/system/roles/${role.id}`, { headers })
+    expect(detail.status).toBe(200)
+    const { resources } = await responseJson<Role>(detail)
+    expect(resources).toEqual([expect.objectContaining({ id: resource.id })])
+
+    const options = await app.request(
+      `/api/system/resources/options/tree?includeIds=${resources.map(({ id }) => id).join(',')}`,
+      { headers },
+    )
+    expect(options.status).toBe(200)
+    expect(await responseJson<ResourceTreeOptionsResponse>(options)).toContainEqual(
+      expect.objectContaining({ id: resource.id, status: RESOURCE_STATUS_DISABLED }),
+    )
+    expect(
+      (await app.request(`/api/system/roles/options?includeIds=${role.id}`, { headers })).status,
+    ).toBe(200)
+
+    const list = await app.request(`/api/system/roles?keyword=${role.code}`, { headers })
+    expect(list.status).toBe(200)
+    expect((await responseJson<RoleListResponse>(list)).list).toEqual([
+      expect.objectContaining({ id: role.id }),
+    ])
+    expect(events).toEqual([
+      expect.objectContaining({
+        action: 'system:role:view',
+        actorUserId: reader.userId,
+        targetKey: role.id,
+        targetLabel: null,
+        requestId: detail.headers.get('x-request-id'),
+        httpStatus: 200,
+      }),
+      expect.objectContaining({
+        action: 'system:role:list',
+        actorUserId: reader.userId,
+        targetKey: null,
+        targetLabel: null,
+        requestId: list.headers.get('x-request-id'),
+        httpStatus: 200,
+      }),
+    ])
+  })
+
+  dbTest('audits resource list, full tree and detail requests', async ({ db }) => {
+    const events: OperationLogEvent[] = []
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
+    const reader = await createSystemAccessFixture(db, { accessCodes: ['system:resource:list'] })
+    const headers = reader.authHeaders
+    const resource = await createSystemResourceFixture(db, {
+      code: 'audit-resource-directory',
+      name: 'Audit Resource Directory',
+    })
+
+    const list = await app.request(`/api/system/resources?keyword=${resource.code}`, { headers })
+    expect(list.status).toBe(200)
+    expect((await responseJson<ResourceListResponse>(list)).list).toEqual([
+      expect.objectContaining({ id: resource.id }),
+    ])
+
+    const tree = await app.request('/api/system/resources/tree', { headers })
+    expect(tree.status).toBe(200)
+    expect(await responseJson<ResourceTreeResponse>(tree)).toContainEqual(
+      expect.objectContaining({ id: resource.id }),
+    )
+
+    const detail = await app.request(`/api/system/resources/${resource.id}`, { headers })
+    expect(detail.status).toBe(200)
+    expect(await responseJson<Resource>(detail)).toMatchObject({ id: resource.id })
+
+    const collectionEvent = {
+      action: 'system:resource:list',
+      actorUserId: reader.userId,
+      targetKey: null,
+      targetLabel: null,
+      httpStatus: 200,
+    }
+    expect(events).toEqual([
+      expect.objectContaining({ ...collectionEvent, requestId: list.headers.get('x-request-id') }),
+      expect.objectContaining({ ...collectionEvent, requestId: tree.headers.get('x-request-id') }),
+      expect.objectContaining({
+        action: 'system:resource:view',
+        actorUserId: reader.userId,
+        targetKey: resource.id,
+        targetLabel: null,
+        requestId: detail.headers.get('x-request-id'),
+        httpStatus: 200,
+      }),
+    ])
+  })
 
   dbTest(
     'records service failures after access and validation without recording config values',

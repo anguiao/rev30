@@ -337,6 +337,10 @@ describe('system operation log integration', () => {
           { method: 'PATCH', headers: admin.authHeaders },
         ),
       )
+      const avatarOnlyResponse = await app.request(
+        `/api/system/users/${created.user.id}`,
+        jsonRequest({ avatarId: null }, { method: 'PATCH', headers: admin.authHeaders }),
+      )
       const resetResponse = await app.request(
         `/api/system/users/${created.user.id}/password/reset`,
         {
@@ -350,31 +354,40 @@ describe('system operation log integration', () => {
       })
 
       expect(updateResponse.status).toBe(200)
+      expect(avatarOnlyResponse.status).toBe(200)
       expect(resetResponse.status).toBe(200)
       const reset = await responseJson<UserResetPasswordResponse>(resetResponse)
       expect(deleteResponse.status).toBe(204)
-      expect(
-        events.map(({ action, targetKey, targetLabel }) => ({ action, targetKey, targetLabel })),
-      ).toEqual([
+      expect(events).toMatchObject([
         {
           action: 'system:user:create',
           targetKey: 'recorded-user',
           targetLabel: 'Recorded User',
+          httpStatus: 201,
         },
         {
           action: 'system:user:update',
           targetKey: created.user.id,
           targetLabel: 'Updated Recorded User',
+          httpStatus: 200,
+        },
+        {
+          action: 'system:user:update',
+          targetKey: created.user.id,
+          targetLabel: null,
+          httpStatus: 200,
         },
         {
           action: 'system:user:reset-password',
           targetKey: created.user.id,
           targetLabel: null,
+          httpStatus: 200,
         },
         {
           action: 'system:user:delete',
           targetKey: created.user.id,
           targetLabel: null,
+          httpStatus: 204,
         },
       ])
       const serializedEvents = JSON.stringify(events)
@@ -383,7 +396,9 @@ describe('system operation log integration', () => {
       expect(serializedEvents).not.toContain(email)
       expect(serializedEvents).not.toContain(phone)
       expect(serializedEvents).not.toContain('updated-private@example.com')
-      expect(serializedEvents).not.toMatch(/avatarId|departmentIds|roleIds/)
+      expect(serializedEvents).not.toMatch(
+        /"(?:avatarId|departmentIds|email|phone|roleIds|temporaryPassword)":/,
+      )
     },
   )
 })

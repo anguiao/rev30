@@ -191,8 +191,7 @@ describe('user routes', () => {
   })
 
   it('delegates create requests to the user service', async () => {
-    const events: OperationLogEvent[] = []
-    const app = createTestApp(events)
+    const app = createTestApp()
     const avatarId = '44444444-4444-4444-8444-444444444444'
 
     const createBody = {
@@ -222,25 +221,11 @@ describe('user routes', () => {
       },
       userAccess,
     )
-    expect(events).toEqual([
-      expect.objectContaining({
-        action: 'system:user:create',
-        targetKey: 'ada',
-        targetLabel: 'Ada Lovelace',
-        httpStatus: 201,
-      }),
-    ])
-    expect(JSON.stringify(events)).not.toMatch(
-      /avatar|email|phone|department|role|temporary-password/,
-    )
   })
 
-  it.each([
-    [{ nickname: 'Updated Ada', avatarId: null }, 'Updated Ada'],
-    [{ avatarId: null }, null],
-  ] as const)('delegates updates by id and audits the target for %j', async (body, targetLabel) => {
-    const events: OperationLogEvent[] = []
-    const app = createTestApp(events)
+  it('delegates updates by id', async () => {
+    const app = createTestApp()
+    const body = { nickname: 'Updated Ada', avatarId: null }
 
     const updateResponse = await app.request(`/api/system/users/${userId}`, {
       method: 'PATCH',
@@ -249,53 +234,26 @@ describe('user routes', () => {
     })
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(userId, body, userAccess)
-    expect(events).toEqual([
-      expect.objectContaining({
-        action: 'system:user:update',
-        targetKey: userId,
-        targetLabel,
-        httpStatus: 200,
-      }),
-    ])
-    expect(JSON.stringify(events)).not.toContain('avatarId')
   })
 
   it('delegates reset-password requests by id', async () => {
-    const events: OperationLogEvent[] = []
-    const app = createTestApp(events)
+    const app = createTestApp()
 
     const resetResponse = await app.request(`/api/system/users/${userId}/password/reset`, {
       method: 'POST',
     })
     expect(resetResponse.status).toBe(200)
     expect(mocks.service.resetPassword).toHaveBeenCalledWith(userId, userAccess)
-    expect(events).toEqual([
-      expect.objectContaining({
-        action: 'system:user:reset-password',
-        targetKey: userId,
-        targetLabel: null,
-        httpStatus: 200,
-      }),
-    ])
   })
 
   it('delegates delete requests by id', async () => {
-    const events: OperationLogEvent[] = []
-    const app = createTestApp(events)
+    const app = createTestApp()
 
     const deleteResponse = await app.request(`/api/system/users/${userId}`, {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(userId, userAccess)
-    expect(events).toEqual([
-      expect.objectContaining({
-        action: 'system:user:delete',
-        targetKey: userId,
-        targetLabel: null,
-        httpStatus: 204,
-      }),
-    ])
   })
 
   it('returns query validation errors before calling the user service', async () => {

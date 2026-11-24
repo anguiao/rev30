@@ -210,13 +210,10 @@ describe('operation log migration', () => {
       [{ action: 'system:user:update:extra' }, 'ops_operation_logs_action_shape_check'],
       [{ actorUsername: ' ' }, 'ops_operation_logs_actor_snapshot_check'],
       [{ actorNickname: 'a'.repeat(513) }, 'ops_operation_logs_actor_snapshot_check'],
-      [{ targetKey: null, targetLabel: null }, 'ops_operation_logs_target_check'],
-      [
-        { action: 'system:department:list', targetType: 'department', targetKey: null },
-        'ops_operation_logs_target_check',
-      ],
       [{ targetKey: ' ', targetLabel: null }, 'ops_operation_logs_target_check'],
       [{ targetKey: 'a'.repeat(513), targetLabel: null }, 'ops_operation_logs_target_check'],
+      [{ targetLabel: ' ' }, 'ops_operation_logs_target_check'],
+      [{ targetLabel: 'a'.repeat(513) }, 'ops_operation_logs_target_check'],
       [{ userAgent: 'a'.repeat(513) }, 'ops_operation_logs_user_agent_length_check'],
     ] as const
 
@@ -225,32 +222,20 @@ describe('operation log migration', () => {
     }
   })
 
-  dbTest('enforces empty targets for the audited collection actions', async ({ db }) => {
-    for (const [module, targetType] of [
-      ['system', 'user'],
-      ['system', 'role'],
-      ['system', 'resource'],
-      ['ops', 'login-log'],
-      ['ops', 'online-session'],
-    ] as const) {
-      const collection = {
-        module,
-        action: `${module}:${targetType}:list`,
-        targetType,
-        targetKey: null,
-        targetLabel: null,
-      }
-      await db
-        .insert(opsOperationLogs)
-        .values(validOperationLog({ ...collection, requestId: crypto.randomUUID() }))
+  dbTest('accepts empty or populated target fields independently of the action', async ({ db }) => {
+    const rows = await db
+      .insert(opsOperationLogs)
+      .values([
+        validOperationLog({ targetKey: null, targetLabel: null }),
+        validOperationLog({
+          action: 'system:user:list',
+          targetKey: 'k'.repeat(512),
+          targetLabel: 'l'.repeat(512),
+          requestId: crypto.randomUUID(),
+        }),
+      ])
+      .returning({ id: opsOperationLogs.id })
 
-      for (const field of ['targetKey', 'targetLabel'] as const) {
-        await expectInsertRejected(
-          db,
-          { ...collection, [field]: 'entity target' },
-          'ops_operation_logs_target_check',
-        )
-      }
-    }
+    expect(rows).toHaveLength(2)
   })
 })

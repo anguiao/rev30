@@ -1,5 +1,4 @@
 import { zValidator } from '@hono/zod-validator'
-import { operationLogCollectionActions } from '@rev30/contracts'
 import { Hono, type MiddlewareHandler } from 'hono'
 import type { Logger } from 'pino'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -167,18 +166,23 @@ describe('operation log registration and middleware', () => {
     expect(Array.from(events[0]!.targetLabel ?? '')).toHaveLength(512)
   })
 
-  it.each(operationLogCollectionActions)('registers %s with empty targets', async (action) => {
+  it('records the target fields supplied by the route for any action', async () => {
     const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
-    const app = createTestApp({ events, logger }).get('/', operationLog(action), (c) =>
-      c.json({ list: [] }),
-    )
+    const app = createTestApp({ events, logger })
+      .get('/detail', operationLog('system:user:view'), (c) => c.body(null, 204))
+      .get(
+        '/list',
+        operationLog('system:user:list', () => ({ targetKey: 'group-1', targetLabel: ' ' })),
+        (c) => c.body(null, 204),
+      )
 
-    const response = await app.request('/')
+    expect((await app.request('/detail')).status).toBe(204)
+    expect((await app.request('/list')).status).toBe(204)
 
-    expect(response.status).toBe(200)
-    expect(events).toEqual([
-      expect.objectContaining({ action, targetKey: null, targetLabel: null }),
+    expect(events).toMatchObject([
+      { action: 'system:user:view', targetKey: null, targetLabel: null },
+      { action: 'system:user:list', targetKey: 'group-1', targetLabel: null },
     ])
     expect(logger.warn).not.toHaveBeenCalled()
   })
@@ -275,11 +279,6 @@ describe('operation log registration and middleware', () => {
     const secondTarget = vi.fn(() => ({ targetKey: 'second-secret' }))
     const app = createTestApp({ events, logger })
       .post(
-        '/empty',
-        operationLog('system:user:update', () => ({ targetKey: ' ', targetLabel: '' })),
-        (c) => c.text(business(c.req.path)),
-      )
-      .post(
         '/invalid-action',
         // @ts-expect-error Unknown actions must also be rejected at runtime.
         operationLog('invalid:action', () => ({ targetKey: 'secret' })),
@@ -291,28 +290,10 @@ describe('operation log registration and middleware', () => {
         (c) => c.text(business(c.req.path)),
       )
       .post(
-        '/collection-target',
-        // @ts-expect-error Fixed collection actions cannot take target resolvers.
-        operationLog('system:user:list', () => ({ targetKey: 'secret' })),
-        (c) => c.text(business(c.req.path)),
-      )
-      .post(
-        '/selected-collection-target',
-        operationLog(
-          // @ts-expect-error Dynamic actions with targets must resolve to entity actions.
-          () => 'system:user:list',
-          () => ({ targetKey: 'secret' }),
-        ),
-        (c) => c.text(business(c.req.path)),
-      )
-      .post(
         '/action-error',
-        operationLog(
-          () => {
-            throw new Error('action-secret')
-          },
-          () => ({ targetKey: 'secret' }),
-        ),
+        operationLog(() => {
+          throw new Error('action-secret')
+        }),
         (c) => c.text(business(c.req.path)),
       )
       .post(
@@ -329,16 +310,7 @@ describe('operation log registration and middleware', () => {
         (c) => c.text(business(c.req.path)),
       )
 
-    const paths = [
-      '/empty',
-      '/invalid-action',
-      '/extra',
-      '/collection-target',
-      '/selected-collection-target',
-      '/action-error',
-      '/target-error',
-      '/duplicate',
-    ]
+    const paths = ['/invalid-action', '/extra', '/action-error', '/target-error', '/duplicate']
     for (const path of paths) {
       const response = await app.request(path, { method: 'POST' })
 

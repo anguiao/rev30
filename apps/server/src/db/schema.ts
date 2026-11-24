@@ -24,7 +24,6 @@ import {
   ATTACHMENT_READ_POLICY_SIGNED,
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
-  operationLogCollectionActions,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
@@ -531,16 +530,9 @@ export const opsOperationLogs = pgTable(
     check(
       'ops_operation_logs_target_check',
       sql`
-        CASE
-          WHEN ${table.action} IN (${sql.join(
-            operationLogCollectionActions.map((action) => sql`${action}`),
-            sql`, `,
-          )}) THEN ${table.targetKey} IS NULL AND ${table.targetLabel} IS NULL
-          ELSE (${table.targetKey} IS NOT NULL OR ${table.targetLabel} IS NOT NULL)
-            AND (${table.targetKey} IS NULL OR (btrim(${table.targetKey}) <> '' AND char_length(${table.targetKey}) <= 512))
-            AND (${table.targetLabel} IS NULL OR (btrim(${table.targetLabel}) <> '' AND char_length(${table.targetLabel}) <= 512))
-        END
-      `.inlineParams(),
+        (${table.targetKey} IS NULL OR (btrim(${table.targetKey}) <> '' AND char_length(${table.targetKey}) <= 512))
+        AND (${table.targetLabel} IS NULL OR (btrim(${table.targetLabel}) <> '' AND char_length(${table.targetLabel}) <= 512))
+      `,
     ),
     check(
       'ops_operation_logs_user_agent_length_check',

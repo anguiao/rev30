@@ -2,11 +2,9 @@ import {
   OPERATION_LOG_RESULT_FAILURE,
   OPERATION_LOG_RESULT_SUCCESS,
   clientIpSourceSchema,
-  isOperationLogCollectionAction,
   operationLogActionSchema,
   operationLogModuleSchema,
   type OperationLogAction,
-  type OperationLogCollectionAction,
 } from '@rev30/contracts'
 import type { Context, HonoRequest, Input, MiddlewareHandler } from 'hono'
 import type { Logger } from 'pino'
@@ -40,11 +38,6 @@ const operationLogRegistrationSchema = z
     target: registrationTargetSchema,
   })
   .strict()
-  .refine(({ action, target: { targetKey, targetLabel } }) =>
-    isOperationLogCollectionAction(action)
-      ? targetKey === undefined && targetLabel === undefined
-      : Boolean(targetKey || targetLabel),
-  )
 
 const operationLogDraftSchema = z
   .object({
@@ -90,7 +83,6 @@ type CreateOperationLogMiddlewareOptions = {
 }
 
 type OperationLogRegistrationInput = z.input<typeof operationLogRegistrationSchema>
-type OperationLogEntityAction = Exclude<OperationLogAction, OperationLogCollectionAction>
 type OperationLogTarget = OperationLogRegistrationInput['target']
 
 function registerOperation(
@@ -167,12 +159,7 @@ export const operationLogIdTarget: OperationLogResolver<
 > = (request) => ({ targetKey: request.valid('param').id })
 
 /** Registers an operation using the input made available by the preceding validators. */
-export function operationLog(action: OperationLogCollectionAction): OperationLogRouteMiddleware
-export function operationLog<I extends Input>(
-  action: OperationLogEntityAction | OperationLogResolver<I, OperationLogEntityAction>,
-  resolveTarget: OperationLogResolver<I, OperationLogTarget>,
-): OperationLogRouteMiddleware<I>
-export function operationLog<I extends Input>(
+export function operationLog<I extends Input = {}>(
   action: OperationLogAction | OperationLogResolver<I, OperationLogAction>,
   resolveTarget?: OperationLogResolver<I, OperationLogTarget>,
 ): OperationLogRouteMiddleware<I> {

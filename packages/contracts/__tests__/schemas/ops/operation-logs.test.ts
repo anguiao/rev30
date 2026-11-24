@@ -181,14 +181,15 @@ describe('operation log schemas', () => {
   })
 
   it('parses exact list responses and rejects detail-only fields', () => {
+    const item = { ...listItem, targetKey: null, targetLabel: null }
     const response = operationLogListResponseSchema.parse({
-      list: [listItem],
+      list: [item],
       total: 1,
       page: 1,
       pageSize: 20,
     })
 
-    expect(response).toEqual({ list: [listItem], total: 1, page: 1, pageSize: 20 })
+    expect(response).toEqual({ list: [item], total: 1, page: 1, pageSize: 20 })
     expectZodIssue(
       operationLogListItemSchema.safeParse({ ...listItem, details: { secret: true } }),
       { code: 'unrecognized_keys', keys: ['details'], path: [] },
@@ -196,9 +197,10 @@ describe('operation log schemas', () => {
   })
 
   it('parses exact detail responses with user-agent structure', () => {
-    const detail = operationLogDetailSchema.parse(detailItem)
+    const item = { ...detailItem, action: 'system:user:list' }
+    const detail = operationLogDetailSchema.parse(item)
 
-    expect(detail).toMatchObject(detailItem)
+    expect(detail).toMatchObject(item)
     expect(detail.userAgent).toEqual({
       raw: 'Example/1.0',
       browser: { name: 'Example', version: null },
@@ -211,47 +213,6 @@ describe('operation log schemas', () => {
     )
   })
 
-  it.each([
-    'system:user:list',
-    'system:role:list',
-    'system:resource:list',
-    'ops:login-log:list',
-    'ops:online-session:list',
-  ])('requires empty targets in list and detail for %s', (action) => {
-    const [module, targetType] = action.split(':')
-    const collection = { module, action, targetType, targetKey: null, targetLabel: null }
-
-    for (const [schema, item] of [
-      [operationLogListItemSchema, { ...listItem, ...collection }],
-      [operationLogDetailSchema, { ...detailItem, ...collection }],
-    ] as const) {
-      expect(schema.parse(item)).toEqual(item)
-
-      for (const field of ['targetKey', 'targetLabel'] as const) {
-        expectZodIssue(schema.safeParse({ ...item, [field]: 'entity target' }), {
-          message: '集合操作日志的目标必须为空',
-          path: ['targetKey'],
-        })
-      }
-    }
-  })
-
-  it.each([
-    'system:user:view',
-    'system:role:view',
-    'system:resource:view',
-    'ops:operation-log:view',
-  ])('accepts an ID-only target and requires a target for %s', (action) => {
-    const [module, targetType] = action.split(':')
-    const item = { ...listItem, module, action, targetType, targetLabel: null }
-
-    expect(operationLogListItemSchema.parse(item)).toEqual(item)
-    expectZodIssue(operationLogListItemSchema.safeParse({ ...item, targetKey: null }), {
-      message: '操作日志至少需要一个目标',
-      path: ['targetKey'],
-    })
-  })
-
   it('rejects inconsistent operation-log response records', () => {
     expectZodIssue(operationLogListItemSchema.safeParse({ ...listItem, module: 'content' }), {
       message: '操作日志模块与动作不一致',
@@ -261,14 +222,6 @@ describe('operation log schemas', () => {
       message: '操作日志目标类型与动作不一致',
       path: ['targetType'],
     })
-    expectZodIssue(
-      operationLogListItemSchema.safeParse({
-        ...listItem,
-        targetKey: null,
-        targetLabel: null,
-      }),
-      { message: '操作日志至少需要一个目标', path: ['targetKey'] },
-    )
     expectZodIssue(operationLogListItemSchema.safeParse({ ...listItem, result: 'failure' }), {
       message: '操作日志结果与 HTTP 状态不一致',
       path: ['result'],

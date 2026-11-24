@@ -202,7 +202,7 @@ describe('operation log query API', () => {
     expect(events).toEqual([])
   })
 
-  dbTest('queries collection and entity reads alongside historical actions', async ({ db }) => {
+  dbTest('queries read actions, historical actions and writes without targets', async ({ db }) => {
     const reader = await createSystemAccessFixture(db, {
       accessCodes: ['ops:operation-log:list'],
       usernamePrefix: 'operation-log-sensitive-read-reader',
@@ -210,6 +210,12 @@ describe('operation log query API', () => {
     const collectionId = randomUUID()
     const viewId = randomUUID()
     const legacyId = randomUUID()
+    const write = {
+      id: randomUUID(),
+      action: 'system:user:update',
+      targetKey: null,
+      targetLabel: null,
+    }
     await db.insert(opsOperationLogs).values([
       operationLog({
         id: collectionId,
@@ -230,6 +236,7 @@ describe('operation log query API', () => {
         targetType: 'icon',
         targetKey: 'example:icon',
       }),
+      operationLog(write),
     ])
     const app = createApp(db)
     const request = async (path = '') => {
@@ -241,10 +248,11 @@ describe('operation log query API', () => {
     }
 
     const page = operationLogListResponseSchema.parse(await request())
-    expect(page.total).toBe(3)
+    expect(page.total).toBe(4)
     expect(page.list.map(({ id }) => id)).toEqual(
-      expect.arrayContaining([collectionId, viewId, legacyId]),
+      expect.arrayContaining([collectionId, viewId, legacyId, write.id]),
     )
+    expect(operationLogDetailSchema.parse(await request(`/${write.id}`))).toMatchObject(write)
 
     const collection = {
       id: collectionId,

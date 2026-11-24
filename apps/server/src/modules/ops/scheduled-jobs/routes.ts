@@ -15,10 +15,14 @@ import {
   scheduledJobSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context } from 'hono'
+import { Hono, type Context, type HonoRequest } from 'hono'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  type OperationLogEnv,
+  type OperationLogInput,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   ScheduledJobInvalidPlanError,
@@ -61,6 +65,14 @@ const scheduledJobEnabledBodyValidator = zValidator(
   },
 )
 
+type ScheduledJobPathInput = OperationLogInput<typeof scheduledJobPathValidator>
+
+function operationLogTaskKeyTarget(
+  request: Pick<HonoRequest<string, ScheduledJobPathInput['out']>, 'valid'>,
+) {
+  return { targetKey: request.valid('param').taskKey }
+}
+
 function scheduledJobErrorResponse(error: unknown, c: Context) {
   if (error instanceof ScheduledJobInvalidPlanError) {
     return c.json({ message: error.message }, 400)
@@ -100,10 +112,10 @@ export function createScheduledJobRoutes(service: ScheduledJobService) {
       requireAccess('ops:scheduled-job:update'),
       scheduledJobPathValidator,
       scheduledJobPlanBodyValidator,
+      operationLog('ops:scheduled-job:update', operationLogTaskKeyTarget),
       async (c) => {
         const { taskKey } = c.req.valid('param')
         const body: ScheduledJobPlanUpdateInput = c.req.valid('json')
-        recordOperation(c, 'ops:scheduled-job:update', { targetKey: taskKey })
         return c.json(scheduledJobSchema.parse(await service.updatePlan(taskKey, body)))
       },
     )
@@ -112,16 +124,16 @@ export function createScheduledJobRoutes(service: ScheduledJobService) {
       requireAccess('ops:scheduled-job:update'),
       scheduledJobPathValidator,
       scheduledJobEnabledBodyValidator,
+      operationLog<
+        ScheduledJobPathInput & OperationLogInput<typeof scheduledJobEnabledBodyValidator>
+      >(
+        (request) =>
+          request.valid('json').enabled ? 'ops:scheduled-job:enable' : 'ops:scheduled-job:disable',
+        operationLogTaskKeyTarget,
+      ),
       async (c) => {
         const { taskKey } = c.req.valid('param')
         const body = c.req.valid('json')
-        recordOperation(
-          c,
-          body.enabled ? 'ops:scheduled-job:enable' : 'ops:scheduled-job:disable',
-          {
-            targetKey: taskKey,
-          },
-        )
         return c.json(scheduledJobSchema.parse(await service.updateEnabled(taskKey, body)))
       },
     )
@@ -129,9 +141,9 @@ export function createScheduledJobRoutes(service: ScheduledJobService) {
       '/:taskKey/runs',
       requireAccess('ops:scheduled-job:execute'),
       scheduledJobPathValidator,
+      operationLog('ops:scheduled-job:execute', operationLogTaskKeyTarget),
       async (c) => {
         const { taskKey } = c.req.valid('param')
-        recordOperation(c, 'ops:scheduled-job:execute', { targetKey: taskKey })
         const result = await service.runManual(taskKey, c.get('currentUser'))
         if ('runId' in result) {
           return c.json(scheduledJobManualExecuteResponseSchema.parse(result), 202)
@@ -165,12 +177,15 @@ export function createScheduledJobRoutes(service: ScheduledJobService) {
       '/:taskKey/runs/:runId/cancel',
       requireAccess('ops:scheduled-job:cancel'),
       scheduledJobRunPathValidator,
+      operationLog<OperationLogInput<typeof scheduledJobRunPathValidator>>(
+        'ops:scheduled-job:cancel',
+        (request) => {
+          const { taskKey, runId } = request.valid('param')
+          return { targetKey: taskKey, targetLabel: runId }
+        },
+      ),
       async (c) => {
         const { taskKey, runId } = c.req.valid('param')
-        recordOperation(c, 'ops:scheduled-job:cancel', {
-          targetKey: taskKey,
-          targetLabel: runId,
-        })
         return c.json(
           scheduledJobCancelResponseSchema.parse(
             await service.cancel(taskKey, runId, c.get('currentUser')),

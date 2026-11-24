@@ -147,12 +147,13 @@ describe('operation log query API', () => {
   })
 
   dbTest('intersects every filter while preserving OR and exact-match rules', async ({ db }) => {
+    const events: OperationLogEvent[] = []
     const reader = await createSystemAccessFixture(db, {
       accessCodes: ['ops:operation-log:list'],
       usernamePrefix: 'operation-log-filter-reader',
     })
     const ids = await seedLogs(db)
-    const app = createApp(db)
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
     const request = async (query: string) => {
       const response = await app.request(`/api/ops/operation-logs?${query}`, {
         headers: reader.authHeaders,
@@ -198,6 +199,7 @@ describe('operation log query API', () => {
     expect(
       resultIds(await request('module=system&action=content%3Aannouncement%3Adelete')),
     ).toEqual([])
+    expect(events).toEqual([])
   })
 
   dbTest('queries collection and entity reads alongside historical actions', async ({ db }) => {
@@ -271,7 +273,7 @@ describe('operation log query API', () => {
     ).toMatchObject([{ id: legacyId, action: 'content:icon:rename' }])
   })
 
-  dbTest('returns detail mapping and boundary errors without recording reads', async ({ db }) => {
+  dbTest('records detail lookups that pass access and path validation', async ({ db }) => {
     const events: OperationLogEvent[] = []
     const reader = await createSystemAccessFixture(db, {
       accessCodes: ['ops:operation-log:list'],
@@ -290,10 +292,12 @@ describe('operation log query API', () => {
     const deniedResponse = await app.request(`/api/ops/operation-logs/${ids.newestId}`, {
       headers: denied.authHeaders,
     })
+    const unauthorized = await app.request(`/api/ops/operation-logs/${ids.newestId}`)
     const invalid = await app.request('/api/ops/operation-logs/not-a-uuid', {
       headers: reader.authHeaders,
     })
-    const missing = await app.request(`/api/ops/operation-logs/${randomUUID()}`, {
+    const missingId = randomUUID()
+    const missing = await app.request(`/api/ops/operation-logs/${missingId}`, {
       headers: reader.authHeaders,
     })
     const invalidQuery = await app.request('/api/ops/operation-logs?page=0', {
@@ -315,13 +319,31 @@ describe('operation log query API', () => {
       },
     })
     expect(deniedResponse.status).toBe(403)
+    expect(unauthorized.status).toBe(401)
     expect(invalid.status).toBe(400)
     expect(await invalid.json()).toEqual({ message: '操作日志 ID 无效' })
     expect(missing.status).toBe(404)
     expect(await missing.json()).toEqual({ message: '操作日志不存在' })
     expect(invalidQuery.status).toBe(400)
     expect(await invalidQuery.json()).toEqual({ message: '请求参数无效' })
-    expect(events).toEqual([])
+    expect(events).toMatchObject([
+      {
+        action: 'ops:operation-log:view',
+        actorUserId: reader.userId,
+        targetKey: ids.newestId,
+        targetLabel: null,
+        result: 'success',
+        httpStatus: 200,
+      },
+      {
+        action: 'ops:operation-log:view',
+        actorUserId: reader.userId,
+        targetKey: missingId,
+        targetLabel: null,
+        result: 'failure',
+        httpStatus: 404,
+      },
+    ])
   })
 
   dbTest('lets unknown database errors reach the root 500 handler', async ({ db }) => {

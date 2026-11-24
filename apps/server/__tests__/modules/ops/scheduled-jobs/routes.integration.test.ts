@@ -87,8 +87,10 @@ describe('scheduled job HTTP routes', () => {
         .update(opsScheduledJobs)
         .set({ activeRunId })
         .where(eq(opsScheduledJobs.taskKey, taskKey))
+      const events: OperationLogEvent[] = []
       const app = createApp(db, {
         scheduledJobService: createTestScheduledJobService(db, scheduler),
+        operationLogReceiver: receiver(events),
       })
 
       const response = await app.request('/api/ops/scheduled-jobs', {
@@ -107,6 +109,7 @@ describe('scheduled job HTTP routes', () => {
       expect(item?.lastRun).toMatchObject({ id: terminalRunId, status: 'success' })
       expect(detailResponse.status).toBe(200)
       expect(detail).toMatchObject({ taskKey, name: `Definition ${taskKey}` })
+      expect(events).toEqual([])
     },
   )
 
@@ -192,13 +195,6 @@ describe('scheduled job HTTP routes', () => {
         body: JSON.stringify({ cronExpression: 'not cron', timezone: 'UTC' }),
       })
       expect(invalidPlan.status).toBe(400)
-      expect(events).toMatchObject([
-        {
-          action: 'ops:scheduled-job:update',
-          httpStatus: 400,
-          targetKey: taskKey,
-        },
-      ])
 
       const extraEnabledBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/enabled`, {
         method: 'PUT',
@@ -206,6 +202,16 @@ describe('scheduled job HTTP routes', () => {
         body: JSON.stringify({ enabled: false, unexpected: true }),
       })
       expect(extraEnabledBody.status).toBe(400)
+      expect(await extraEnabledBody.json()).toEqual({ message: '请求体无效' })
+      expect(events).toMatchObject([
+        {
+          action: 'ops:scheduled-job:update',
+          httpStatus: 400,
+          result: 'failure',
+          targetKey: taskKey,
+          targetLabel: null,
+        },
+      ])
     },
   )
 
@@ -317,9 +323,10 @@ describe('scheduled job HTTP routes', () => {
         .where(eq(opsScheduledJobs.taskKey, taskKey))
       expect(enabledPlan?.activeRunId).toBe(runId)
       expect(scheduler.wake).toHaveBeenCalledTimes(2)
-      expect(events.map(({ action, httpStatus }) => ({ action, httpStatus }))).toEqual([
-        { action: 'ops:scheduled-job:disable', httpStatus: 200 },
-        { action: 'ops:scheduled-job:enable', httpStatus: 200 },
+      const event = { httpStatus: 200, result: 'success', targetKey: taskKey, targetLabel: null }
+      expect(events).toMatchObject([
+        { ...event, action: 'ops:scheduled-job:disable' },
+        { ...event, action: 'ops:scheduled-job:enable' },
       ])
     },
   )
@@ -352,12 +359,14 @@ describe('scheduled job HTTP routes', () => {
       skippedRunId,
       activeRunId,
     })
-    expect(events[0]).toMatchObject({
-      action: 'ops:scheduled-job:execute',
-      targetKey: taskKey,
-      result: 'failure',
-      httpStatus: 409,
-    })
+    expect(events).toMatchObject([
+      {
+        action: 'ops:scheduled-job:execute',
+        targetKey: taskKey,
+        result: 'failure',
+        httpStatus: 409,
+      },
+    ])
   })
 
   dbTest('returns stable secure run pages and a complete exact-match detail', async ({ db }) => {
@@ -404,8 +413,10 @@ describe('scheduled job HTTP routes', () => {
       },
     ])
     const scheduler = createScheduler()
+    const events: OperationLogEvent[] = []
     const app = createApp(db, {
       scheduledJobService: createTestScheduledJobService(db, scheduler),
+      operationLogReceiver: receiver(events),
     })
     const firstPageResponse = await app.request(
       `/api/ops/scheduled-jobs/${taskKey}/runs?page=1&pageSize=1`,
@@ -444,6 +455,7 @@ describe('scheduled job HTTP routes', () => {
       { headers: reader.authHeaders },
     )
     expect(mismatchResponse.status).toBe(404)
+    expect(events).toEqual([])
   })
 
   dbTest(

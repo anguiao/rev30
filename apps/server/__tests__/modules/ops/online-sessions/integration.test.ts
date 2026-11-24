@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { onlineSessionListResponseSchema } from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
-import { Hono } from 'hono'
 import { assert, describe, expect } from 'vitest'
 import { authSessions } from '../../../../src/db/schema'
-import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import {
   createAttachmentAccessToken,
   verifyAttachmentAccessToken,
@@ -18,30 +16,10 @@ import { createAuthRepository } from '../../../../src/modules/auth/repository'
 import { createAuthService } from '../../../../src/modules/auth/service'
 import { createTokenPair } from '../../../../src/modules/auth/tokens'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
-import { createOpsRoutes } from '../../../../src/modules/ops/routes'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-import { createApp, createTestScheduledJobService } from '../../../helpers/app'
+import { createApp } from '../../../helpers/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { createSystemUserFixture } from '../../../helpers/system'
-
-function createTestApp(database: TestDatabase, authHeaders: Record<string, string>) {
-  const app = new Hono().route(
-    '/api/ops',
-    createOpsRoutes(
-      database,
-      createAuthMiddleware(database),
-      createTestScheduledJobService(database),
-    ),
-  )
-  return {
-    request(input: string, init?: RequestInit) {
-      return app.request(input, {
-        ...init,
-        headers: new Headers({ ...authHeaders, ...Object.fromEntries(new Headers(init?.headers)) }),
-      })
-    },
-  }
-}
 
 function createOperationLogReceiver(events: OperationLogEvent[]) {
   return (event: OperationLogEvent) => {
@@ -91,13 +69,16 @@ describe('online session routes', () => {
       accessCodes: ['ops:login-log:list'],
       usernamePrefix: 'ops-missing-session-list',
     })
+    const events: OperationLogEvent[] = []
+    const app = createApp(database, { operationLogReceiver: createOperationLogReceiver(events) })
 
-    expect(
-      (await createTestApp(database, admin.authHeaders).request('/api/ops/sessions')).status,
-    ).toBe(200)
-    expect(
-      (await createTestApp(database, missing.authHeaders).request('/api/ops/sessions')).status,
-    ).toBe(403)
+    expect((await app.request('/api/ops/sessions', { headers: admin.authHeaders })).status).toBe(
+      200,
+    )
+    expect((await app.request('/api/ops/sessions', { headers: missing.authHeaders })).status).toBe(
+      403,
+    )
+    expect(events).toMatchObject([{ action: 'ops:online-session:list', actorUserId: admin.userId }])
   })
 
   dbTest(
@@ -107,7 +88,8 @@ describe('online session routes', () => {
         accessCodes: ['ops:online-session:list'],
         usernamePrefix: 'ops-session-reader',
       })
-      const app = createTestApp(database, reader.authHeaders)
+      const events: OperationLogEvent[] = []
+      const app = createApp(database, { operationLogReceiver: createOperationLogReceiver(events) })
       const target = await createSystemUserFixture(database, { username: 'Session.Target' })
       const olderId = await insertSession(database, {
         id: '10000000-0000-4000-8000-000000000001',
@@ -155,6 +137,7 @@ describe('online session routes', () => {
 
       const response = await app.request(
         '/api/ops/sessions?username=session&createdIp=198.51.100.7&page=1&pageSize=20',
+        { headers: reader.authHeaders },
       )
       const body = onlineSessionListResponseSchema.parse(await response.json())
 
@@ -163,10 +146,22 @@ describe('online session routes', () => {
       expect(body.list.map(({ id }) => id)).toEqual([latestId, tiedId, newerId, olderId])
       expect(body.list.every(({ isCurrent }) => !isCurrent)).toBe(true)
 
-      const allSessions = onlineSessionListResponseSchema.parse(
-        await (await app.request('/api/ops/sessions?pageSize=100')).json(),
-      )
+      const allSessionsResponse = await app.request('/api/ops/sessions?pageSize=100', {
+        headers: reader.authHeaders,
+      })
+      expect(allSessionsResponse.status).toBe(200)
+      const allSessions = onlineSessionListResponseSchema.parse(await allSessionsResponse.json())
       expect(allSessions.list.find(({ userId }) => userId === reader.userId)?.isCurrent).toBe(true)
+      const listEvent = {
+        action: 'ops:online-session:list',
+        actorUserId: reader.userId,
+        targetKey: null,
+        targetLabel: null,
+        result: 'success',
+        httpStatus: 200,
+      }
+      expect(events).toMatchObject([listEvent, listEvent])
+      expect(JSON.stringify(events)).not.toContain('198.51.100.7')
     },
   )
 
@@ -315,7 +310,7 @@ describe('online session routes', () => {
     },
   )
 
-  dbTest('does not record invalid, forbidden, or read-only requests', async ({ db }) => {
+  dbTest('does not record requests rejected by access or input validation', async ({ db }) => {
     const events: OperationLogEvent[] = []
     const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
     const revoker = await createSystemAccessFixture(db, {
@@ -335,12 +330,14 @@ describe('online session routes', () => {
       method: 'DELETE',
       headers: listOnly.authHeaders,
     })
-    const list = await app.request('/api/ops/sessions', { headers: listOnly.authHeaders })
+    const invalidQuery = await app.request('/api/ops/sessions?page=0', {
+      headers: listOnly.authHeaders,
+    })
 
     expect(invalid.status).toBe(400)
     expect(await invalid.json()).toEqual({ message: '会话 ID 无效' })
     expect(forbidden.status).toBe(403)
-    expect(list.status).toBe(200)
+    expect(invalidQuery.status).toBe(400)
     expect(events).toEqual([])
   })
 })

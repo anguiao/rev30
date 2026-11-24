@@ -10,6 +10,12 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+} from '../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../middleware/request-context'
 import { OperationLogNotFoundError } from './errors'
 import { createOperationLogService } from './service'
 
@@ -43,7 +49,7 @@ function operationLogErrorResponse(error: unknown, c: Context) {
 
 export function createOperationLogRoutes(database: Db) {
   const service = createOperationLogService(database)
-  const app = new Hono<AuthEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => operationLogErrorResponse(error, c))
 
@@ -58,9 +64,15 @@ export function createOperationLogRoutes(database: Db) {
         return c.json(operationLogListResponseSchema.parse(await service.list(query)))
       },
     )
-    .get('/:id', requireAccess('ops:operation-log:list'), operationLogIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+    .get(
+      '/:id',
+      requireAccess('ops:operation-log:list'),
+      operationLogIdValidator,
+      operationLog('ops:operation-log:view', operationLogIdTarget),
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      return c.json(operationLogDetailSchema.parse(await service.get(id)))
-    })
+        return c.json(operationLogDetailSchema.parse(await service.get(id)))
+      },
+    )
 }

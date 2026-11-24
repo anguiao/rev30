@@ -22,7 +22,8 @@ describe('login log routes', () => {
         accessCodes: ['ops:login-log:list'],
         usernamePrefix: 'ops-login-log-reader',
       })
-      const app = createApp(database)
+      const events: OperationLogEvent[] = []
+      const app = createApp(database, { operationLogReceiver: createOperationLogReceiver(events) })
       const targetUser = await createSystemUserFixture(database, { username: 'Alice.Target' })
       const firstId = randomUUID()
       const secondId = randomUUID()
@@ -112,14 +113,28 @@ describe('login log routes', () => {
         'userId',
         'username',
       ])
+      const listEvent = {
+        action: 'ops:login-log:list',
+        actorUserId: authorized.userId,
+        targetKey: null,
+        targetLabel: null,
+        result: 'success',
+        httpStatus: 200,
+      }
+      expect(events).toMatchObject([listEvent, listEvent])
+      expect(JSON.stringify(events)).not.toMatch(/alice|203\.0\.113\.10/i)
     },
   )
 
-  dbTest('rejects invalid queries and does not record read-only requests', async ({ db }) => {
+  dbTest('does not record requests rejected by access or query validation', async ({ db }) => {
     const events: OperationLogEvent[] = []
     const reader = await createSystemAccessFixture(db, {
       accessCodes: ['ops:login-log:list'],
       usernamePrefix: 'ops-login-log-validator',
+    })
+    const denied = await createSystemAccessFixture(db, {
+      accessCodes: ['ops:online-session:list'],
+      usernamePrefix: 'ops-login-log-denied',
     })
     const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
 
@@ -136,8 +151,8 @@ describe('login log routes', () => {
     expect(invalidRange.status).toBe(400)
     expect(await invalidRange.json()).toEqual({ message: '请求参数无效' })
 
-    const list = await app.request('/api/ops/login-logs', { headers: reader.authHeaders })
-    expect(list.status).toBe(200)
+    const forbidden = await app.request('/api/ops/login-logs', { headers: denied.authHeaders })
+    expect(forbidden.status).toBe(403)
     expect(events).toEqual([])
   })
 })

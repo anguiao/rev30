@@ -9,7 +9,11 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import { CurrentOnlineSessionConflictError, OnlineSessionNotFoundError } from './errors'
 import { createOnlineSessionService } from './service'
@@ -48,21 +52,28 @@ export function createOnlineSessionRoutes(database: Db) {
   app.onError((error, c) => onlineSessionErrorResponse(error, c))
 
   return app
-    .get('/', requireAccess('ops:online-session:list'), onlineSessionQueryValidator, async (c) => {
-      const query: OnlineSessionListQuery = c.req.valid('query')
+    .get(
+      '/',
+      requireAccess('ops:online-session:list'),
+      onlineSessionQueryValidator,
+      operationLog('ops:online-session:list'),
+      async (c) => {
+        const query: OnlineSessionListQuery = c.req.valid('query')
 
-      return c.json(
-        onlineSessionListResponseSchema.parse(await service.list(query, c.get('currentSessionId'))),
-      )
-    })
+        return c.json(
+          onlineSessionListResponseSchema.parse(
+            await service.list(query, c.get('currentSessionId')),
+          ),
+        )
+      },
+    )
     .delete(
       '/:id',
       requireAccess('ops:online-session:revoke'),
       onlineSessionIdValidator,
+      operationLog('ops:online-session:revoke', operationLogIdTarget),
       async (c) => {
         const { id } = c.req.valid('param')
-
-        recordOperation(c, 'ops:online-session:revoke', { targetKey: id })
 
         await service.revoke(id, c.get('currentSessionId'))
         return c.body(null, 204)

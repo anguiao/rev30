@@ -8,6 +8,8 @@ import { Hono } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
+import { operationLog, type OperationLogEnv } from '../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../middleware/request-context'
 import { createLoginLogService } from './service'
 
 const loginLogQueryValidator = zValidator('query', loginLogListQuerySchema, (result, c) => {
@@ -19,10 +21,11 @@ const loginLogQueryValidator = zValidator('query', loginLogListQuerySchema, (res
 export function createLoginLogRoutes(database: Db) {
   const service = createLoginLogService(database)
 
-  return new Hono<AuthEnv>().get(
+  return new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>().get(
     '/',
     requireAccess('ops:login-log:list'),
     loginLogQueryValidator,
+    operationLog('ops:login-log:list'),
     async (c) => {
       const query: LoginLogListQuery = c.req.valid('query')
 

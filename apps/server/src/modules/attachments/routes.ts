@@ -18,7 +18,12 @@ import { z } from 'zod'
 import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+  type OperationLogInput,
+} from '../../middleware/operation-log'
 import type { RequestContextEnv } from '../../middleware/request-context'
 import { getAttachmentAccessTokenCookie } from './access-token'
 import {
@@ -227,10 +232,12 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       '/uploads/:uploadId/complete',
       attachmentUploadSessionIdValidator,
       attachmentUploadSessionCompleteBodyValidator,
+      operationLog<OperationLogInput<typeof attachmentUploadSessionIdValidator>>(
+        'content:attachment:upload',
+        (request) => ({ targetKey: request.valid('param').uploadId }),
+      ),
       async (c) => {
         const { uploadId } = c.req.valid('param')
-
-        recordOperation(c, 'content:attachment:upload', { targetKey: uploadId })
 
         const attachment = await service.completeUploadSession({
           uploadId,
@@ -266,10 +273,9 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       '/:id',
       requireAccess('content:attachment:delete'),
       attachmentIdValidator,
+      operationLog('content:attachment:delete', operationLogIdTarget),
       async (c) => {
         const { id } = c.req.valid('param')
-
-        recordOperation(c, 'content:attachment:delete', { targetKey: id })
 
         await service.delete(id, c.get('requestContext').logger)
 

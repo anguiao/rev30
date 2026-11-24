@@ -136,14 +136,6 @@ function registerOperation(
   }
 }
 
-export function recordOperation(
-  c: Context<OperationLogContextEnv>,
-  action: OperationLogAction,
-  target: OperationLogTarget,
-) {
-  registerOperation(c, () => ({ action, target }))
-}
-
 export type OperationLogInput<Validator> =
   Validator extends MiddlewareHandler<
     infer _Env,

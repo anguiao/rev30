@@ -21,13 +21,16 @@ import {
 import { ATTACHMENT_MAX_SIZE_MESSAGE } from '../../../src/modules/attachments/policy'
 import type { createAttachmentService } from '../../../src/modules/attachments/service'
 import type { AuthEnv } from '../../../src/middleware/auth'
+import { createOperationLogMiddleware } from '../../../src/middleware/operation-log'
 import { createAttachmentRoutes } from '../../../src/modules/attachments/routes'
 import type { RequestContextEnv } from '../../../src/middleware/request-context'
 import { createLogger } from '../../../src/runtime/logger'
+import type { OperationLogEvent } from '../../../src/runtime/operation-log'
 
 type AttachmentService = ReturnType<typeof createAttachmentService>
 
 const attachmentId = 'a1111111-1111-4111-8111-11111111111a'
+const uploadId = 'b1111111-1111-4111-8111-11111111111b'
 const currentUser = {
   id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
   username: 'ada',
@@ -64,9 +67,9 @@ const contentUrl = {
 } satisfies AttachmentContentUrl
 
 const uploadSession = {
-  uploadId: attachmentId,
+  uploadId,
   request: {
-    url: `/api/attachments/uploads/${attachmentId}/content?token=upload-token`,
+    url: `/api/attachments/uploads/${uploadId}/content?token=upload-token`,
     method: 'PUT',
     headers: {
       'Content-Type': 'image/png',
@@ -104,6 +107,7 @@ const mocks = vi.hoisted(() => {
   }
   const authMiddleware = vi.fn(async (c: Context<AuthEnv>, next: Next) => {
     c.set('currentUser', currentUser)
+    c.set('currentSessionId', '00000000-0000-4000-8000-000000000002')
     c.set('accessCodes', authState.accessCodes)
     c.set('isAdmin', authState.isAdmin)
 
@@ -114,7 +118,6 @@ const mocks = vi.hoisted(() => {
     authState,
     authMiddleware,
     createAttachmentService: vi.fn(() => service),
-    recordOperation: vi.fn(),
     service,
   }
 })
@@ -123,11 +126,7 @@ vi.mock('../../../src/modules/attachments/service', () => ({
   createAttachmentService: mocks.createAttachmentService,
 }))
 
-vi.mock('../../../src/middleware/operation-log', () => ({
-  recordOperation: mocks.recordOperation,
-}))
-
-function createAttachmentTestApp() {
+function createAttachmentTestApp(events: OperationLogEvent[] = []) {
   return new Hono<RequestContextEnv>()
     .use('*', async (c, next) => {
       c.set('requestContext', {
@@ -140,6 +139,12 @@ function createAttachmentTestApp() {
 
       await next()
     })
+    .use(
+      '*',
+      createOperationLogMiddleware((event) => {
+        events.push(event)
+      }, requestLogger),
+    )
     .route('/api/attachments', createAttachmentRoutes({} as never, mocks.authMiddleware))
 }
 
@@ -227,7 +232,7 @@ describe('attachment routes', () => {
     const app = createAttachmentTestApp()
 
     const uploadResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId.toUpperCase()}/content?token=upload-token`,
+      `/api/attachments/uploads/${uploadId.toUpperCase()}/content?token=upload-token`,
       {
         method: 'PUT',
         body: file,
@@ -238,15 +243,16 @@ describe('attachment routes', () => {
     expect(mocks.service.uploadSessionContent).toHaveBeenCalledWith({
       body: expect.any(Object),
       token: 'upload-token',
-      uploadId: attachmentId,
+      uploadId,
     })
   })
 
-  it('normalizes completion IDs and records the upload operation before completion', async () => {
-    const app = createAttachmentTestApp()
+  it('normalizes the upload session ID and uses it as the completion audit target', async () => {
+    const events: OperationLogEvent[] = []
+    const app = createAttachmentTestApp(events)
 
     const completeResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId.toUpperCase()}/complete`,
+      `/api/attachments/uploads/${uploadId.toUpperCase()}/complete`,
       {
         method: 'POST',
         body: JSON.stringify({}),
@@ -258,17 +264,18 @@ describe('attachment routes', () => {
     expect(completeResponse.status).toBe(201)
     expect(await completeResponse.json()).toEqual(attachment)
     expect(mocks.service.completeUploadSession).toHaveBeenCalledWith({
-      uploadId: attachmentId,
+      uploadId,
       userId: currentUser.id,
     })
-    expect(mocks.recordOperation).toHaveBeenCalledWith(
-      expect.anything(),
-      'content:attachment:upload',
-      { targetKey: attachmentId },
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.completeUploadSession.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toMatchObject([
+      {
+        action: 'content:attachment:upload',
+        targetKey: uploadId,
+        targetLabel: null,
+        httpStatus: 201,
+        result: 'success',
+      },
+    ])
   })
 
   it('returns attachment metadata for callers with management access', async () => {
@@ -300,27 +307,30 @@ describe('attachment routes', () => {
     })
   })
 
-  it('records the delete operation before manual attachment deletion', async () => {
+  it('records successful manual attachment deletion', async () => {
     mocks.authState.accessCodes = ['content:attachment:delete']
-    const app = createAttachmentTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createAttachmentTestApp(events)
 
     const deleteResponse = await app.request(`/api/attachments/${attachmentId}`, {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId, requestLogger)
-    expect(mocks.recordOperation).toHaveBeenLastCalledWith(
-      expect.anything(),
-      'content:attachment:delete',
-      { targetKey: attachmentId },
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.delete.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toMatchObject([
+      {
+        action: 'content:attachment:delete',
+        targetKey: attachmentId,
+        targetLabel: null,
+        httpStatus: 204,
+        result: 'success',
+      },
+    ])
   })
 
   it('requires attachment management access for metadata and manual deletion', async () => {
-    const app = createAttachmentTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createAttachmentTestApp(events)
 
     const detailResponse = await app.request(`/api/attachments/${attachmentId}`)
     expect(detailResponse.status).toBe(403)
@@ -347,6 +357,7 @@ describe('attachment routes', () => {
     expect(mocks.service.createContentUrl).toHaveBeenCalledWith(attachmentId, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
     })
+    expect(events).toEqual([])
   })
 
   it('lists attachments with filters and requires list access', async () => {
@@ -438,7 +449,8 @@ describe('attachment routes', () => {
   })
 
   it('validates upload sessions, request bodies, ids, and upload tokens before service calls', async () => {
-    const app = createAttachmentTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createAttachmentTestApp(events)
 
     const invalidCreateResponse = await app.request('/api/attachments/uploads', {
       method: 'POST',
@@ -468,6 +480,18 @@ describe('attachment routes', () => {
     expect(await invalidCompleteResponse.json()).toEqual({ message: '上传会话 ID 无效' })
     expect(mocks.service.completeUploadSession).not.toHaveBeenCalled()
 
+    const invalidCompleteBodyResponse = await app.request(
+      `/api/attachments/uploads/${uploadId}/complete`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ originalName: 'avatar.png' }),
+        headers: { 'content-type': 'application/json' },
+      },
+    )
+    expect(invalidCompleteBodyResponse.status).toBe(400)
+    expect(await invalidCompleteBodyResponse.json()).toEqual({ message: '请求体无效' })
+    expect(mocks.service.completeUploadSession).not.toHaveBeenCalled()
+
     mocks.authState.accessCodes = ['content:attachment:list']
     const invalidIdResponse = await app.request('/api/attachments/not-a-uuid')
     expect(invalidIdResponse.status).toBe(400)
@@ -488,7 +512,7 @@ describe('attachment routes', () => {
     expect(mocks.service.createContentUrl).not.toHaveBeenCalled()
 
     const missingUploadTokenResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/content`,
+      `/api/attachments/uploads/${uploadId}/content`,
       {
         method: 'PUT',
         body: new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
@@ -501,6 +525,7 @@ describe('attachment routes', () => {
       message: '附件链接已失效',
     })
     expect(mocks.service.uploadSessionContent).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('maps unsupported signed URL requests for authenticated attachments', async () => {
@@ -545,7 +570,7 @@ describe('attachment routes', () => {
       name: 'unsupported types during content upload',
       serviceMethod: 'uploadSessionContent',
       error: new AttachmentTypeUnsupportedError(),
-      path: `/api/attachments/uploads/${attachmentId}/content?token=upload-token`,
+      path: `/api/attachments/uploads/${uploadId}/content?token=upload-token`,
       request: {
         method: 'PUT',
         body: new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
@@ -559,7 +584,7 @@ describe('attachment routes', () => {
       name: 'expired links during content upload',
       serviceMethod: 'uploadSessionContent',
       error: new AttachmentUploadUrlInvalidError(),
-      path: `/api/attachments/uploads/${attachmentId}/content?token=expired-token`,
+      path: `/api/attachments/uploads/${uploadId}/content?token=expired-token`,
       request: {
         method: 'PUT',
         body: new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
@@ -573,7 +598,7 @@ describe('attachment routes', () => {
       name: 'missing content during upload completion',
       serviceMethod: 'completeUploadSession',
       error: new AttachmentUploadSessionNotReadyError(),
-      path: `/api/attachments/uploads/${attachmentId}/complete`,
+      path: `/api/attachments/uploads/${uploadId}/complete`,
       request: {
         method: 'POST',
         body: JSON.stringify({}),
@@ -586,7 +611,7 @@ describe('attachment routes', () => {
       name: 'expired sessions during upload completion',
       serviceMethod: 'completeUploadSession',
       error: new AttachmentUploadSessionInvalidError(),
-      path: `/api/attachments/uploads/${attachmentId}/complete`,
+      path: `/api/attachments/uploads/${uploadId}/complete`,
       request: {
         method: 'POST',
         body: JSON.stringify({}),
@@ -626,7 +651,8 @@ describe('attachment routes', () => {
     'maps $name to the expected HTTP response',
     async ({ serviceMethod, error, path, request, status, message }) => {
       if (serviceMethod === 'get') mocks.authState.accessCodes = ['content:attachment:list']
-      const app = createAttachmentTestApp()
+      const events: OperationLogEvent[] = []
+      const app = createAttachmentTestApp(events)
       const service = mocks.service[serviceMethod]
       service.mockRejectedValueOnce(error)
 
@@ -635,6 +661,19 @@ describe('attachment routes', () => {
       expect(service).toHaveBeenCalledOnce()
       expect(response.status).toBe(status)
       expect(await response.json()).toEqual({ message })
+      expect(events).toMatchObject(
+        serviceMethod === 'completeUploadSession'
+          ? [
+              {
+                action: 'content:attachment:upload',
+                targetKey: uploadId,
+                targetLabel: null,
+                httpStatus: 400,
+                result: 'failure',
+              },
+            ]
+          : [],
+      )
     },
   )
 })

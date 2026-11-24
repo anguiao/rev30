@@ -9,16 +9,19 @@ import {
   iconSetPrefixParamSchema,
   customIconUpdateSchema,
   customIconUploadMetadataSchema,
-  type CustomIconUploadMetadata,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context } from 'hono'
+import { Hono, type Context, type HonoRequest } from 'hono'
 import { z } from 'zod'
 import type { Db } from '../../../../db'
 import { requireAccess } from '../../../../middleware/access'
 import type { AuthEnv } from '../../../../middleware/auth'
 import { createBodyLimit } from '../../../../middleware/body-limit'
-import { recordOperation, type OperationLogEnv } from '../../../../middleware/operation-log'
+import {
+  operationLog,
+  type OperationLogEnv,
+  type OperationLogInput,
+} from '../../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../../middleware/request-context'
 import {
   CustomIconConflictError,
@@ -76,6 +79,8 @@ const iconSetParamValidator = zValidator('param', iconSetPrefixParamSchema, (res
   }
 })
 
+type IconSetParamInput = OperationLogInput<typeof iconSetParamValidator>
+
 const customIconParamValidator = zValidator('param', customIconParamSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '图标参数无效' }, 400)
@@ -85,23 +90,47 @@ const customIconParamValidator = zValidator('param', customIconParamSchema, (res
 const uploadFileSchema = z.instanceof(File)
 const customIconUploadBodyLimit = createBodyLimit(5 * 1024 * 1024)
 
-const iconUploadFormSchema = z.object({
-  duplicateStrategy: z.preprocess(
-    (value) => (value === undefined || value === '' ? 'skip' : value),
-    customIconDuplicateStrategySchema,
-  ),
-  files: z
-    .union([uploadFileSchema, uploadFileSchema.array()])
-    .transform((value) => (Array.isArray(value) ? value : [value]))
-    .pipe(uploadFileSchema.array().min(1)),
-  metadata: z.string().optional(),
-})
+const iconUploadMetadataFormFieldSchema = z
+  .string()
+  .transform((value, context): unknown => {
+    try {
+      return JSON.parse(value)
+    } catch {
+      context.addIssue({ code: 'custom', message: '图标元数据不是有效的 JSON' })
+      return z.NEVER
+    }
+  })
+  .pipe(customIconUploadMetadataSchema)
+  .optional()
+
+const iconUploadFormSchema = z
+  .object({
+    duplicateStrategy: z.preprocess(
+      (value) => (value === undefined || value === '' ? 'skip' : value),
+      customIconDuplicateStrategySchema,
+    ),
+    files: z
+      .union([uploadFileSchema, uploadFileSchema.array()])
+      .transform((value) => (Array.isArray(value) ? value : [value]))
+      .pipe(uploadFileSchema.array().min(1)),
+    metadata: iconUploadMetadataFormFieldSchema,
+  })
+  .refine(({ files, metadata }) => metadata === undefined || metadata.length === files.length, {
+    path: ['metadata'],
+    message: '图标元数据条数与文件数不一致',
+  })
 
 const iconUploadFormValidator = zValidator('form', iconUploadFormSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '请求体无效' }, 400)
   }
 })
+
+function iconSetPrefixTarget(
+  request: Pick<HonoRequest<string, IconSetParamInput['out']>, 'valid'>,
+) {
+  return { targetKey: request.valid('param').prefix }
+}
 
 function customIconErrorResponse(error: unknown, c: Context) {
   if (error instanceof CustomIconSetConflictError || error instanceof CustomIconConflictError) {
@@ -129,16 +158,22 @@ export function createCustomIconSetRoutes(database: Db) {
     .get('/', requireAccess('content:icon-set:list'), iconSetListQueryValidator, async (c) => {
       return c.json(await service.list(c.req.valid('query')))
     })
-    .post('/', requireAccess('content:icon-set:create'), iconSetCreateBodyValidator, async (c) => {
-      const body = c.req.valid('json')
+    .post(
+      '/',
+      requireAccess('content:icon-set:create'),
+      iconSetCreateBodyValidator,
+      operationLog<OperationLogInput<typeof iconSetCreateBodyValidator>>(
+        'content:icon-set:create',
+        (request) => {
+          const { prefix, name } = request.valid('json')
 
-      recordOperation(c, 'content:icon-set:create', {
-        targetKey: body.prefix,
-        targetLabel: body.name,
-      })
-
-      return c.json(await service.create(body), 201)
-    })
+          return { targetKey: prefix, targetLabel: name }
+        },
+      ),
+      async (c) => {
+        return c.json(await service.create(c.req.valid('json')), 201)
+      },
+    )
     .get(
       '/icons',
       requireAccess('content:icon-set:list'),
@@ -153,29 +188,14 @@ export function createCustomIconSetRoutes(database: Db) {
       iconSetParamValidator,
       customIconUploadBodyLimit,
       iconUploadFormValidator,
+      operationLog<IconSetParamInput>('content:icon:upload', iconSetPrefixTarget),
       async (c) => {
         const { prefix } = c.req.valid('param')
         const form = c.req.valid('form')
-        let metadata: CustomIconUploadMetadata | undefined
-        if (form.metadata !== undefined) {
-          let decoded: unknown
-          try {
-            decoded = JSON.parse(form.metadata)
-          } catch {
-            return c.json({ message: '请求体无效' }, 400)
-          }
-          const result = customIconUploadMetadataSchema.safeParse(decoded)
-          if (!result.success || result.data.length !== form.files.length) {
-            return c.json({ message: '请求体无效' }, 400)
-          }
-          metadata = result.data
-        }
-
-        recordOperation(c, 'content:icon:upload', { targetKey: prefix })
 
         const files = await Promise.all(
           form.files.map(async (file, index) => {
-            const fileMetadata = metadata?.[index]
+            const fileMetadata = form.metadata?.[index]
             return {
               filename: file.name,
               content: await file.text(),
@@ -197,14 +217,17 @@ export function createCustomIconSetRoutes(database: Db) {
       requireAccess('content:icon-set:update'),
       customIconParamValidator,
       customIconUpdateBodyValidator,
+      operationLog<
+        OperationLogInput<typeof customIconParamValidator> &
+          OperationLogInput<typeof customIconUpdateBodyValidator>
+      >('content:icon:update', (request) => {
+        const { prefix, name } = request.valid('param')
+
+        return { targetKey: `${prefix}:${name}`, targetLabel: request.valid('json').name }
+      }),
       async (c) => {
         const { prefix, name } = c.req.valid('param')
         const body = c.req.valid('json')
-
-        recordOperation(c, 'content:icon:update', {
-          targetKey: `${prefix}:${name}`,
-          ...(body.name === undefined ? {} : { targetLabel: body.name }),
-        })
 
         return c.json(await service.updateIcon(prefix, name, body))
       },
@@ -213,10 +236,16 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/icons/:name',
       requireAccess('content:icon-set:delete'),
       customIconParamValidator,
+      operationLog<OperationLogInput<typeof customIconParamValidator>>(
+        'content:icon:delete',
+        (request) => {
+          const { prefix, name } = request.valid('param')
+
+          return { targetKey: `${prefix}:${name}` }
+        },
+      ),
       async (c) => {
         const { prefix, name } = c.req.valid('param')
-
-        recordOperation(c, 'content:icon:delete', { targetKey: `${prefix}:${name}` })
 
         await service.deleteIcon(prefix, name)
 
@@ -227,11 +256,9 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/export',
       requireAccess('content:icon-set:export'),
       iconSetParamValidator,
+      operationLog<IconSetParamInput>('content:icon-set:export', iconSetPrefixTarget),
       async (c) => {
         const { prefix } = c.req.valid('param')
-
-        recordOperation(c, 'content:icon-set:export', { targetKey: prefix })
-
         const exported = await service.exportIconSet(prefix)
 
         c.header('content-type', 'application/json; charset=utf-8')
@@ -250,14 +277,16 @@ export function createCustomIconSetRoutes(database: Db) {
       requireAccess('content:icon-set:update'),
       iconSetParamValidator,
       iconSetUpdateBodyValidator,
+      operationLog<IconSetParamInput & OperationLogInput<typeof iconSetUpdateBodyValidator>>(
+        'content:icon-set:update',
+        (request) => ({
+          targetKey: request.valid('param').prefix,
+          targetLabel: request.valid('json').name,
+        }),
+      ),
       async (c) => {
         const { prefix } = c.req.valid('param')
         const body = c.req.valid('json')
-
-        recordOperation(c, 'content:icon-set:update', {
-          targetKey: prefix,
-          ...(body.name === undefined ? {} : { targetLabel: body.name }),
-        })
 
         return c.json(await service.update(prefix, body))
       },
@@ -266,10 +295,9 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix',
       requireAccess('content:icon-set:delete'),
       iconSetParamValidator,
+      operationLog<IconSetParamInput>('content:icon-set:delete', iconSetPrefixTarget),
       async (c) => {
         const { prefix } = c.req.valid('param')
-
-        recordOperation(c, 'content:icon-set:delete', { targetKey: prefix })
 
         await service.delete(prefix)
 

@@ -1,5 +1,4 @@
 import type { Context, Next } from 'hono'
-import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ANNOUNCEMENT_VISIBILITY_ALL,
@@ -19,6 +18,8 @@ import {
 } from '../../../../src/modules/content/announcements/errors'
 import type { requireAccess } from '../../../../src/middleware/access'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
+import { createOperationLogRouteTestApp } from '../../../helpers/operation-log'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
 const announcement = {
@@ -108,7 +109,6 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createAnnouncementService: vi.fn(() => service),
-    recordOperation: vi.fn(),
     requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
@@ -122,12 +122,11 @@ vi.mock('../../../../src/modules/content/announcements/service', () => ({
   createAnnouncementService: mocks.createAnnouncementService,
 }))
 
-vi.mock('../../../../src/middleware/operation-log', () => ({
-  recordOperation: mocks.recordOperation,
-}))
-
-function createTestApp() {
-  return new Hono().route('/api/content/announcements', createAnnouncementRoutes({} as never))
+function createTestApp(events: OperationLogEvent[] = []) {
+  return createOperationLogRouteTestApp(events).route(
+    '/api/content/announcements',
+    createAnnouncementRoutes({} as never),
+  )
 }
 
 describe('announcement routes', () => {
@@ -154,25 +153,52 @@ describe('announcement routes', () => {
     { method: 'GET', path: '', access: 'list', status: 200 },
     { method: 'GET', path: '/target-options', access: 'list', status: 200 },
     { method: 'GET', path: `/${announcementId}`, access: 'list', status: 200 },
-    { method: 'POST', path: '', access: 'create', status: 201, body: createBody },
+    {
+      method: 'POST',
+      path: '',
+      access: 'create',
+      status: 201,
+      body: createBody,
+      action: 'create',
+    },
     {
       method: 'PATCH',
       path: `/${announcementId}`,
       access: 'update',
       status: 200,
       body: { title: 'Updated' },
+      action: 'update',
     },
-    { method: 'POST', path: `/${announcementId}/publish`, access: 'update', status: 204 },
-    { method: 'POST', path: `/${announcementId}/archive`, access: 'update', status: 204 },
-    { method: 'DELETE', path: `/${announcementId}`, access: 'delete', status: 204 },
+    {
+      method: 'POST',
+      path: `/${announcementId}/publish`,
+      access: 'update',
+      status: 204,
+      action: 'publish',
+    },
+    {
+      method: 'POST',
+      path: `/${announcementId}/archive`,
+      access: 'update',
+      status: 204,
+      action: 'archive',
+    },
+    {
+      method: 'DELETE',
+      path: `/${announcementId}`,
+      access: 'delete',
+      status: 204,
+      action: 'delete',
+    },
   ])(
-    'requires the $access guard on $method $path',
-    async ({ method, path, access, status, body }) => {
+    'requires the $access guard on $method $path before recording any operation',
+    async ({ method, path, access, status, body, action }) => {
       mocks.requireAccess.mockImplementation((code) => async (c, next) => {
         if (c.req.header('x-test-access') !== code) return c.json({ message: '无权访问' }, 403)
         await next()
       })
-      const app = createTestApp()
+      const events: OperationLogEvent[] = []
+      const app = createTestApp(events)
       const request = (granted: string) =>
         app.request(`/api/content/announcements${path}`, {
           method,
@@ -181,7 +207,11 @@ describe('announcement routes', () => {
         })
       expect((await request('content:announcement:unrelated')).status).toBe(403)
       for (const service of Object.values(mocks.service)) expect(service).not.toHaveBeenCalled()
+      expect(events).toEqual([])
       expect((await request(`content:announcement:${access}`)).status).toBe(status)
+      expect(events.map((event) => event.action)).toEqual(
+        action === undefined ? [] : [`content:announcement:${action}`],
+      )
     },
   )
 
@@ -204,7 +234,8 @@ describe('announcement routes', () => {
   })
 
   it('normalizes default announcement create fields before delegation', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
     const createResponse = await app.request('/api/content/announcements', {
       method: 'POST',
       body: JSON.stringify(createBody),
@@ -218,21 +249,21 @@ describe('announcement routes', () => {
       visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
     })
-    expect(mocks.recordOperation).toHaveBeenCalledWith(
-      expect.anything(),
-      'content:announcement:create',
-      { targetLabel: '维护通知' },
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.create.mock.invocationCallOrder[0]!,
-    )
-    expect(JSON.stringify(mocks.recordOperation.mock.calls)).not.toMatch(
-      /contentJson|今晚维护|targets|summary/,
-    )
+    expect(events).toMatchObject([
+      {
+        action: 'content:announcement:create',
+        targetKey: null,
+        targetLabel: '维护通知',
+        httpStatus: 201,
+        result: 'success',
+      },
+    ])
+    expect(JSON.stringify(events)).not.toMatch(/contentJson|今晚维护|targets|summary/)
   })
 
   it('delegates announcement title updates to the service', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
     const updateResponse = await app.request(`/api/content/announcements/${announcementId}`, {
       method: 'PATCH',
       body: JSON.stringify({ title: '维护通知（更新）' }),
@@ -241,18 +272,20 @@ describe('announcement routes', () => {
 
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
-    expect(mocks.recordOperation).toHaveBeenCalledWith(
-      expect.anything(),
-      'content:announcement:update',
-      { targetKey: announcementId, targetLabel: '维护通知（更新）' },
-    )
-    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.service.update.mock.invocationCallOrder[0]!,
-    )
+    expect(events).toMatchObject([
+      {
+        action: 'content:announcement:update',
+        targetKey: announcementId,
+        targetLabel: '维护通知（更新）',
+        httpStatus: 200,
+        result: 'success',
+      },
+    ])
   })
 
   it('returns validation errors before calling service methods', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
 
     const queryResponse = await app.request('/api/content/announcements?page=0')
     expect(queryResponse.status).toBe(400)
@@ -315,10 +348,12 @@ describe('announcement routes', () => {
     expect(publishFalseOnlyResponse.status).toBe(400)
     expect(await publishFalseOnlyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
+    expect(events).toEqual([])
   })
 
   it('maps announcement domain errors to route responses', async () => {
-    const app = createTestApp()
+    const events: OperationLogEvent[] = []
+    const app = createTestApp(events)
     const headers = { 'content-type': 'application/json' }
 
     mocks.service.create.mockRejectedValueOnce(new AnnouncementContentInvalidError())
@@ -367,6 +402,13 @@ describe('announcement routes', () => {
     )
     expect(draftArchiveResponse.status).toBe(400)
     expect(await draftArchiveResponse.json()).toEqual({ message: '草稿通知公告不能下线' })
+    expect(events.at(-1)).toMatchObject({
+      action: 'content:announcement:archive',
+      targetKey: announcementId,
+      targetLabel: null,
+      httpStatus: 400,
+      result: 'failure',
+    })
 
     mocks.service.publish.mockRejectedValueOnce(new AnnouncementVisibilityTargetRequiredError())
     const targetRequiredResponse = await app.request(

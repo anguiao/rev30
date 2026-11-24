@@ -8,11 +8,22 @@ import {
   type IconSearchResponse,
 } from '@rev30/contracts'
 import type { IconifyJSON } from '@iconify/types'
+import type { hc } from 'hono/client'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeAll, describe, expect, onTestFinished, vi } from 'vitest'
+import {
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 import { createApp } from '../../../helpers/app'
+import type { AppType } from '../../../../src/app'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
@@ -28,6 +39,10 @@ import {
   getIconSearchDictionary,
   loadIconSearchDictionary,
 } from '../../../../src/modules/icons/search/dictionary'
+
+type CustomIconUploadClient = ReturnType<
+  typeof hc<AppType>
+>['api']['content']['icon-sets']['custom'][':prefix']['icons']
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -48,6 +63,13 @@ describe('icon set routes', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('requires a prefix and accepts optional JSON metadata in the upload RPC client', () => {
+    type UploadRequest = Parameters<CustomIconUploadClient['$post']>[0]
+
+    expectTypeOf<UploadRequest['param']['prefix']>().toEqualTypeOf<string>()
+    expectTypeOf<UploadRequest['form']['metadata']>().toEqualTypeOf<string | undefined>()
   })
 
   dbTest(
@@ -91,18 +113,21 @@ describe('icon set routes', () => {
   )
 
   dbTest(
-    'rejects invalid upload metadata before reading files or writing icons',
+    'rejects invalid upload metadata before auditing, reading files, or writing icons',
     async ({ db }) => {
+      const events: OperationLogEvent[] = []
       const authenticated = await createSystemAccessFixture(db, {
         accessCodes: ['content:icon-set:create'],
         usernamePrefix: 'icon-metadata-invalid-user',
       })
-      const app = createApp(db)
-      await app.request('/api/content/icon-sets/custom', {
+      const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
+      const created = await app.request('/api/content/icon-sets/custom', {
         method: 'POST',
         headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
         body: JSON.stringify({ prefix: 'acme-meta', name: 'Metadata' }),
       })
+      expect(created.status).toBe(201)
+      events.length = 0
       const readFile = vi.spyOn(File.prototype, 'text')
 
       for (const metadata of [
@@ -124,6 +149,7 @@ describe('icon set routes', () => {
 
       expect(readFile).not.toHaveBeenCalled()
       expect(await db.select().from(customIconSetIcons)).toEqual([])
+      expect(events).toEqual([])
     },
   )
 
@@ -547,6 +573,7 @@ describe('icon set routes', () => {
     vi.spyOn(File.prototype, 'text').mockRejectedValueOnce(new Error('private file failure'))
     const formData = new FormData()
     formData.append('files', new File(['<svg />'], 'private.svg', { type: 'image/svg+xml' }))
+    formData.set('metadata', JSON.stringify([{ keywords: ['Private Keyword'] }]))
     const response = await app.request('/api/content/icon-sets/custom/preprocess/icons', {
       method: 'POST',
       headers: authenticated.authHeaders,
@@ -554,14 +581,18 @@ describe('icon set routes', () => {
     })
 
     expect(response.status).toBe(500)
+    expect(await response.text()).toBe('Internal Server Error')
     expect(events).toHaveLength(1)
     expect(events[0]).toMatchObject({
       action: 'content:icon:upload',
+      httpStatus: 500,
       result: 'failure',
       targetKey: 'preprocess',
       targetLabel: null,
     })
-    expect(JSON.stringify(events)).not.toMatch(/private\.svg|private file failure|<svg/)
+    expect(JSON.stringify(events)).not.toMatch(
+      /private\.svg|private file failure|<svg|Private Keyword/,
+    )
   })
 
   dbTest('rejects creating custom sets with built-in prefixes', async ({ db: database }) => {
@@ -659,8 +690,9 @@ describe('icon set routes', () => {
   })
 
   dbTest(
-    'rejects create and export operations for users without the required access',
+    'rejects create and export operations without auditing when access is denied',
     async ({ db: database }) => {
+      const events: OperationLogEvent[] = []
       const manager = await createSystemAccessFixture(database, {
         accessCodes: ['content:icon-set:create'],
         usernamePrefix: 'icon-set-creator-user',
@@ -669,7 +701,7 @@ describe('icon set routes', () => {
         accessCodes: ['content:icon-set:list'],
         usernamePrefix: 'icon-set-list-only-user',
       })
-      const app = createApp(database)
+      const app = createApp(database, { operationLogReceiver: createOperationLogReceiver(events) })
 
       await app.request('/api/content/icon-sets/custom', {
         method: 'POST',
@@ -683,6 +715,7 @@ describe('icon set routes', () => {
           description: null,
         }),
       })
+      events.length = 0
 
       const createResponse = await app.request('/api/content/icon-sets/custom', {
         method: 'POST',
@@ -704,6 +737,7 @@ describe('icon set routes', () => {
       expect(await createResponse.json()).toEqual({ message: '无权访问' })
       expect(exportResponse.status).toBe(403)
       expect(await exportResponse.json()).toEqual({ message: '无权访问' })
+      expect(events).toEqual([])
     },
   )
 })

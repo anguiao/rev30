@@ -14,7 +14,12 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import {
+  operationLog,
+  operationLogIdTarget,
+  type OperationLogEnv,
+  type OperationLogInput,
+} from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   AnnouncementContentImageInvalidError,
@@ -136,10 +141,12 @@ export function createAnnouncementRoutes(database: Db) {
       '/',
       requireAccess('content:announcement:create'),
       announcementCreateBodyValidator,
+      operationLog<OperationLogInput<typeof announcementCreateBodyValidator>>(
+        'content:announcement:create',
+        (request) => ({ targetLabel: request.valid('json').title }),
+      ),
       async (c) => {
         const body: AnnouncementCreateInput = c.req.valid('json')
-
-        recordOperation(c, 'content:announcement:create', { targetLabel: body.title })
 
         return c.json(await service.create(body), 201)
       },
@@ -149,14 +156,16 @@ export function createAnnouncementRoutes(database: Db) {
       requireAccess('content:announcement:update'),
       announcementIdValidator,
       announcementUpdateBodyValidator,
+      operationLog<
+        OperationLogInput<typeof announcementIdValidator> &
+          OperationLogInput<typeof announcementUpdateBodyValidator>
+      >('content:announcement:update', (request) => ({
+        targetKey: request.valid('param').id,
+        targetLabel: request.valid('json').title,
+      })),
       async (c) => {
         const { id } = c.req.valid('param')
         const body: AnnouncementUpdateInput = c.req.valid('json')
-
-        recordOperation(c, 'content:announcement:update', {
-          targetKey: id,
-          ...(body.title === undefined ? {} : { targetLabel: body.title }),
-        })
 
         return c.json(await service.update(id, body))
       },
@@ -165,10 +174,9 @@ export function createAnnouncementRoutes(database: Db) {
       '/:id/publish',
       requireAccess('content:announcement:update'),
       announcementIdValidator,
+      operationLog('content:announcement:publish', operationLogIdTarget),
       async (c) => {
         const { id } = c.req.valid('param')
-
-        recordOperation(c, 'content:announcement:publish', { targetKey: id })
 
         await service.publish(id)
 
@@ -179,10 +187,9 @@ export function createAnnouncementRoutes(database: Db) {
       '/:id/archive',
       requireAccess('content:announcement:update'),
       announcementIdValidator,
+      operationLog('content:announcement:archive', operationLogIdTarget),
       async (c) => {
         const { id } = c.req.valid('param')
-
-        recordOperation(c, 'content:announcement:archive', { targetKey: id })
 
         await service.archive(id)
 
@@ -193,10 +200,9 @@ export function createAnnouncementRoutes(database: Db) {
       '/:id',
       requireAccess('content:announcement:delete'),
       announcementIdValidator,
+      operationLog('content:announcement:delete', operationLogIdTarget),
       async (c) => {
         const { id } = c.req.valid('param')
-
-        recordOperation(c, 'content:announcement:delete', { targetKey: id })
 
         await service.delete(id)
 

@@ -84,6 +84,11 @@ export type OperationLogEnv = {
 
 type OperationLogContextEnv = AuthEnv & RequestContextEnv & OperationLogEnv
 
+type CreateOperationLogMiddlewareOptions = {
+  receiver: OperationLogEventReceiver
+  logger: Logger
+}
+
 type OperationLogRegistrationInput = z.input<typeof operationLogRegistrationSchema>
 type OperationLogEntityAction = Exclude<OperationLogAction, OperationLogCollectionAction>
 type OperationLogTarget = OperationLogRegistrationInput['target']
@@ -210,10 +215,10 @@ function createOperationLogEvent(
   }
 }
 
-export function createOperationLogMiddleware(
-  receiver: OperationLogEventReceiver,
-  logger: Logger,
-): MiddlewareHandler<OperationLogEnv> {
+export function createOperationLogMiddleware({
+  receiver,
+  logger,
+}: CreateOperationLogMiddlewareOptions): MiddlewareHandler<OperationLogEnv> {
   return async (c, next) => {
     await next()
     const registration = c.get('operationLogRegistration')

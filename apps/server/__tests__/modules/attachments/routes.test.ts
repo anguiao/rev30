@@ -141,9 +141,10 @@ function createAttachmentTestApp(events: OperationLogEvent[] = []) {
     })
     .use(
       '*',
-      createOperationLogMiddleware((event) => {
-        events.push(event)
-      }, requestLogger),
+      createOperationLogMiddleware({
+        receiver: (event) => events.push(event),
+        logger: requestLogger,
+      }),
     )
     .route('/api/attachments', createAttachmentRoutes({} as never, mocks.authMiddleware))
 }

@@ -74,10 +74,10 @@ function createTestApp(options: {
     .use('*', createRequestLogger())
     .use(
       '*',
-      createOperationLogMiddleware(
-        options.receiver ?? ((event) => options.events.push(event)),
-        options.logger,
-      ),
+      createOperationLogMiddleware({
+        receiver: options.receiver ?? ((event) => options.events.push(event)),
+        logger: options.logger,
+      }),
     )
     .onError(rootErrorHandler)
 

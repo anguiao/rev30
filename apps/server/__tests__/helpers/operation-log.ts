@@ -43,9 +43,10 @@ export function createOperationLogRouteTestApp(
     .use('*', requestContext)
     .use(
       '*',
-      createOperationLogMiddleware((event) => {
-        events.push(event)
-      }, logger),
+      createOperationLogMiddleware({
+        receiver: (event) => events.push(event),
+        logger,
+      }),
     )
     .use('*', async (c, next) => {
       c.set('currentUser', currentUser)

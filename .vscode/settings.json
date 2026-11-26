@@ -1,4 +1,8 @@
 {
+  "files.eol": "\n",
+  "[bat]": {
+    "files.eol": "\r\n"
+  },
   "oxc.fmt.configPath": ".oxfmtrc.json",
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.formatOnSave": false,

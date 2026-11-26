@@ -14,30 +14,30 @@
       ]
     },
     "remix-icon.json": {
-      "checksum": "27ee588c3034ac9076bd8605a723a21af8c24e33daaff858d442674f7c6dadb7",
+      "checksum": "99b4d2c1a08deea659aa4585055bea0eb5f6e143e60e8a88118f9b3689aa4c76",
       "sources": [
         {
           "project": "RemixIcon",
-          "version": "v4.8.0",
-          "url": "https://raw.githubusercontent.com/Remix-Design/RemixIcon/8e543a8983790c20d7d8c696ae74023c69f379b7/tags.json",
-          "checksum": "cab63cd51f7efff82b19ead3bb06aacd2a6b938718c0ee1b34aa0e9dac53d1df"
+          "version": "v4.9.1",
+          "url": "https://raw.githubusercontent.com/Remix-Design/RemixIcon/39eab8b69cadaa47e1bed6a41777b1cd22227c74/tags.json",
+          "checksum": "71d6fc27431b1abe205d725a01171c881a5ef4a32c08fe4c1f7e2cb0ec3d9225"
         }
       ]
     },
     "cldr-emoji.json": {
-      "checksum": "6b330ecbc9a90f90d186f8f790a8c6449a86263a5a639dc3368cebf388f0902b",
+      "checksum": "52d0a8822495037a54fa99625593bb3fa16c90603965b593fe0b04d45160d534",
       "sources": [
         {
           "project": "Unicode CLDR",
-          "version": "release-48",
-          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/annotations/zh.xml",
-          "checksum": "92389f71659998736530c72d4dcc86e453fe0be170cde5c5ad27094cab2a2de8"
+          "version": "release-49",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/96e54b273d2da4ec6fbad350ba19ff23fa24a588/common/annotations/zh.xml",
+          "checksum": "820de5034133077d2baa31464de0c91e748ae3c659880c2918bf6a55e560a282"
         },
         {
           "project": "Unicode CLDR",
-          "version": "release-48",
-          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/annotationsDerived/zh.xml",
-          "checksum": "777acebb7c4ed103c34f5605881a2537656e0a17d9d1127518da7cd54f612bcc"
+          "version": "release-49",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/96e54b273d2da4ec6fbad350ba19ff23fa24a588/common/annotationsDerived/zh.xml",
+          "checksum": "4fff4592df54051e4b8ebe49f17e3b6bd9c951303f99abeb989446b80ef64a1f"
         }
       ]
     },
@@ -46,14 +46,14 @@
       "sources": [
         {
           "project": "Unicode CLDR",
-          "version": "release-48",
-          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/zh.xml",
-          "checksum": "b1ef8bcadcf19fa8914d9ba812a7bcec124c72fecbf4acea02e4c8bd2fe51866"
+          "version": "release-49",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/96e54b273d2da4ec6fbad350ba19ff23fa24a588/common/main/zh.xml",
+          "checksum": "95a7bf986c594389498b7c9243e255d3c466ab27df7efed8be11e9a1fccfa6ec"
         },
         {
           "project": "Unicode CLDR",
-          "version": "release-48",
-          "url": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/validity/region.xml",
+          "version": "release-49",
+          "url": "https://raw.githubusercontent.com/unicode-org/cldr/96e54b273d2da4ec6fbad350ba19ff23fa24a588/common/validity/region.xml",
           "checksum": "e751e0eedd46b52c38f3cdb72b0fab61ac8b48e052e8b28ba74b6ac26c4c8cb1"
         }
       ]

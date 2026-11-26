@@ -1,4 +1,4 @@
-import { sql, type SQLWrapper } from 'drizzle-orm'
+import { sql, type SQL } from 'drizzle-orm'
 import type { PgliteDatabase } from 'drizzle-orm/pglite'
 import type { Db } from '../../../src/db'
 import { planIconSearchQuery } from '../../../src/modules/icons/search/planner'
@@ -167,12 +167,12 @@ export async function runBurstBenchmark(database: Db, requestedSamples: number) 
 export async function verifyTierZeroQueryPlan(database: Pick<PgliteDatabase, 'execute'>) {
   const query = '铃铛'
   const plan = planIconSearchQuery(query, getIconSearchDictionary())
-  let statement: SQLWrapper | string | undefined
+  let statement: SQL | undefined
   await findRankedIconSearchRows(
     {
-      execute: <Row extends Record<string, unknown>>(rankedStatement: SQLWrapper | string) => {
+      execute: (rankedStatement, mode) => {
         statement ??= rankedStatement
-        return database.execute<Row>(rankedStatement)
+        return database.execute(rankedStatement, mode)
       },
     },
     plan,

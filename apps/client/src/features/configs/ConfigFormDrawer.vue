@@ -45,7 +45,7 @@ const configFormSchema = z
       configCustomValueSchema.safeParse(value.customValue).success,
     {
       path: ['customValue'],
-      message: '请输入自定义值',
+      error: '请输入自定义值',
     },
   )
 

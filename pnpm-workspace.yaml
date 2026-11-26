@@ -4,21 +4,22 @@ packages:
   - playgrounds/*
 
 catalog:
-  '@iconify/json': ^2.2.533
+  '@iconify/json': ^2.2.561
   '@types/bytes': ^3.1.6
-  '@vitest/coverage-v8': ^5.0.1
-  '@vitejs/plugin-vue': ^6.0.9
-  '@vue/test-utils': ^2.5.1
-  '@vueuse/core': ^15.0.0
+  '@vitest/coverage-v8': ^5.1.1
+  '@vitejs/plugin-vue': ^6.0.11
+  '@vue/test-utils': ^2.6.0
+  '@vueuse/core': ^15.1.0
   bytes: ^3.1.2
-  happy-dom: ^20.14.5
-  hono: ^4.13.8
-  naive-ui: ^2.44.1
+  happy-dom: ^20.14.6
+  hono: ^4.13.22
+  # 2.45.3 fails the nested dropdown and tab switching tests.
+  naive-ui: ~2.44.1
   vite: ^8.3.0
-  vitest: ^5.0.1
-  vue: ^3.5.43
-  vue-tsc: ^3.3.11
-  zod: ^4.6.5
+  vitest: ^5.1.1
+  vue: ^3.5.46
+  vue-tsc: ^3.3.14
+  zod: ^4.6.7
 
 allowBuilds:
   esbuild: true

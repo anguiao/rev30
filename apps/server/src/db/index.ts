@@ -1,6 +1,7 @@
 import { PGlite } from '@electric-sql/pglite'
-import { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
-import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js'
+import type { PgAsyncDatabase } from 'drizzle-orm/pg-core'
+import { drizzle as drizzlePglite, type PgliteQueryResultHKT } from 'drizzle-orm/pglite'
+import { drizzle as drizzlePostgres, type PostgresJsQueryResultHKT } from 'drizzle-orm/postgres-js'
 import { mkdir } from 'node:fs/promises'
 import postgres from 'postgres'
 import { migratePGlite } from './migrate'
@@ -45,6 +46,6 @@ export async function createDb() {
 }
 
 export type ManagedDb = Awaited<ReturnType<typeof createDb>>
-export type Db = ManagedDb['db']
+export type Db = PgAsyncDatabase<PgliteQueryResultHKT | PostgresJsQueryResultHKT, typeof relations>
 export type DbReader = Pick<Db, 'select'>
 export type DbExecutor = Pick<Db, 'select' | 'insert' | 'update' | 'delete' | 'execute'>

@@ -65,14 +65,12 @@ describe('link feature', () => {
     expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 
-  it('rejects unsafe href values during document validation', () => {
+  it('rejects unsafe href values when creating a link mark', () => {
     const editor = createEditor()
-    const link = editor.schema.mark('link', { href: 'javascript:alert(1)' })
-    const text = editor.schema.text('维护通知', [link])
-    const paragraph = editor.schema.node('paragraph', null, text)
-    const document = editor.schema.node('doc', null, paragraph)
 
-    expect(() => document.check()).toThrow('Invalid link href')
+    expect(() => editor.schema.mark('link', { href: 'javascript:alert(1)' })).toThrow(
+      'Invalid link href',
+    )
   })
 
   it('does not persist presentation attributes on link marks', () => {

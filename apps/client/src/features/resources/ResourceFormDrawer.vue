@@ -64,6 +64,7 @@ const openTargetOptions = [
   { label: '新窗口', value: RESOURCE_OPEN_TARGET_BLANK },
 ]
 
+const externalUrlPlaceholder = '例如 https://example.com/docs'
 const drawerTitle = computed(() => (props.resourceId === null ? '新增权限资源' : '编辑权限资源'))
 
 const defaultFormValues: ResourceFormInput = {
@@ -389,7 +390,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
               <NInput
                 data-test="resource-form-external-url"
                 :value="state.value ?? ''"
-                placeholder="例如 https://example.com/docs"
+                :placeholder="externalUrlPlaceholder"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />

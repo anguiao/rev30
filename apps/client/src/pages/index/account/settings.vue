@@ -24,7 +24,7 @@ const authPasswordUpdateFormSchema = authPasswordUpdateSchema
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
     path: ['confirmPassword'],
-    message: '两次输入的密码不一致',
+    error: '两次输入的密码不一致',
   })
 type AuthPasswordUpdateFormInput = z.input<typeof authPasswordUpdateFormSchema>
 

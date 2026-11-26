@@ -1,5 +1,4 @@
-import { sql } from 'drizzle-orm'
-import type { DbExecutor } from '../../../db'
+import { sql, type SQL } from 'drizzle-orm'
 import type { SearchCursorPosition } from '../cursor'
 import type { IconSearchMetadata } from './facts'
 import type { IconSearchQueryPlan } from './planner'
@@ -15,7 +14,7 @@ type RankedRowsOptions = {
 }
 
 export async function findRankedIconSearchRows(
-  executor: Pick<DbExecutor, 'execute'>,
+  executor: { execute(statement: SQL, mode: 'objects'): Promise<RankedIconSearchRow[]> },
   plan: IconSearchQueryPlan,
   { source, prefix, after, limit }: RankedRowsOptions,
 ): Promise<RankedIconSearchRow[]> {
@@ -32,7 +31,7 @@ export async function findRankedIconSearchRows(
         ? sql`WHERE (-match_score, -rank, -(preference::bigint), id COLLATE "C") >
             (${-after.matchScore}, -(${after.rank}::real), ${-after.preference}::bigint, ${after.id})`
         : sql``
-    const result = await executor.execute<RankedIconSearchRow>(sql`
+    const statement = sql`
       WITH page AS (
         SELECT * FROM (
           SELECT ctid AS row_id, id, (${matchScore}) AS match_score, (${rank}) AS rank, preference
@@ -49,8 +48,9 @@ export async function findRankedIconSearchRows(
       FROM page
       JOIN icon_search_documents AS document ON document.ctid = page.row_id
       ORDER BY page.match_score DESC, page.rank DESC, page.preference DESC, page.id COLLATE "C"
-    `)
-    rows.push(...(Array.isArray(result) ? result : result.rows))
+    `
+    const page = await executor.execute(statement, 'objects')
+    rows.push(...page)
     if (rows.length === pageSize) break
   }
   return rows

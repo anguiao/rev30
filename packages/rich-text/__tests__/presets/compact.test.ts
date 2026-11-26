@@ -731,7 +731,7 @@ describe('standard rich text preset', () => {
     )
 
     expect(content.html).toContain('<h3>维护通知</h3>')
-    expect(content.html).toContain('<mark><s><u>需要关注</u></s></mark>')
+    expect(content.html).toContain('<u><s><mark>需要关注</mark></s></u>')
     expect(content.html).toContain(`src="${imageSrc}"`)
     expect(content.html).toContain('alt="通知图片"')
 

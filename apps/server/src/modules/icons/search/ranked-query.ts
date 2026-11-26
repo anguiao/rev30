@@ -29,7 +29,10 @@ function any(conditions: readonly SQL[]): SQL {
 
 function below(candidate: SQL, ...higher: SQL[]): SQL {
   if (higher.includes(candidate)) return never
-  return all([candidate, ...higher.filter((condition) => condition !== never).map(not)])
+  return all([
+    candidate,
+    ...higher.filter((condition) => condition !== never).map((condition) => not(condition)),
+  ])
 }
 
 function textArray(values: readonly string[]): SQL {
